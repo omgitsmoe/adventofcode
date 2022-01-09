@@ -1,0 +1,186 @@
+from time import time
+
+
+ def reverse(text, repeat):
+     knot = list(range(256))
+     pos = 0
+     skip = 0
+     for isntevenused in range(repeat):
+          for i in text:
+             temp = []
+             for j in range(i):
+                 temp.append(knot[(pos+j) % 256])
+             for j in range(i):
+                 knot[(pos+i-1-j) % 256] = temp[j]
+             pos += skip + i
+             skip += 1
+     return knot
+
+
+ def dense(knot):
+     dense = [0]*16
+     for i in range(16):
+         dense[i] = knot[16*i]
+         for m in range(1, 16):
+             dense[i] ^= knot[16*i+m]
+     return dense
+
+
+ def kh(dense):
+     knothash = ''
+     for i in dense:
+         if len(hex(i)[2:]) == 2:
+             knothash += hex(i)[2:]  # better knothash += f'{i:02x}' or <3.6: knothash += '{:02x}'.format(i)
+         else:
+             knothash += '0' + hex(i)[2:]
+     return knothash
+
+
+ start = time()
+
+ inp = '63,144,180,149,1,255,167,84,125,65,188,0,2,254,229,24'
+ text = [63,144,180,149,1,255,167,84,125,65,188,0,2,254,229,24]
+ text2 = []
+
+ for i in range(len(inp)):
+     text2.append(ord(inp[i]))
+ text2 += [17, 31, 73, 47, 23]
+
+ knot = reverse(text, 1)
+ sparce = reverse(text2, 64)
+
+ dense = dense(sparce)
+ knothash = kh(dense)
+
+ print('Part One: ' + str(knot[0]*knot[1]))
+ print('Part Two: ' + knothash)
+ print('Completed in ' + str(time() - start) + ' seconds.')
+
+________________________________________________________________________________________
+
+part2 only!!:
+from functools import reduce
+
+lens = [ord(x) for x in open('10.in','r').read().rstrip()]
+lens.extend([17,31,73,47,23])
+nums = [x for x in range(0,256)]
+pos = 0
+skip = 0
+for _ in range(64):
+    for l in lens:
+        to_reverse = []
+        for x in range(l):
+            n = (pos + x) % 256
+            to_reverse.append(nums[n])
+        to_reverse.reverse()
+        for x in range(l):
+            n = (pos + x) % 256
+            nums[n] = to_reverse[x]
+        pos += l + skip
+        pos = pos % 256
+        skip += 1
+dense = []
+for x in range(0,16):
+    subslice = nums[16*x:16*x+16]
+    dense.append('%02x'%reduce((lambda x,y: x ^ y),subslice))
+print(''.join(dense))
+
+________________________________________________________________________________________
+
+py2:
+instr = """63,144,180,149,1,255,167,84,125,65,188,0,2,254,229,24"""
+
+lengths = [ord(x) for x in instr] + [17, 31, 73, 47, 23]
+
+lsize = 256
+
+l = list(range(lsize))
+
+cur_skip = 0
+cur_pos = 0
+
+for i in range(64):
+    for length in lengths:
+        cur_subl = []
+
+        for i in range(length):
+            cur_subl.append(l[(i+cur_pos) % len(l)])
+
+        for i in range(length):
+            l[(i+cur_pos)%len(l)] = cur_subl[len(cur_subl) - i -1]
+
+        cur_pos = (cur_pos + cur_skip + length) % len(l)
+        cur_skip += 1
+
+final = ""
+
+for i in range(16):
+    sub = l[i*16:(i+1)*16]
+
+    h = sub[0]
+    for c in sub[1:]:
+        h = h ^ c
+    final += "{:02x}".format(h)
+
+print final
+
+________________________________________________________________________________________
+
+Modern C++:
+std::vector<int> lengths;
+if (part2) {
+  lengths.insert(lengths.end(), std::istream_iterator<char>{std::cin}, {});
+  lengths.insert(lengths.end(), {17, 31, 73, 47, 23});
+} else {
+  std::cin.imbue(std::locale{std::cin.getloc(), new csv});
+  lengths.insert(lengths.end(), std::istream_iterator<int>{std::cin}, {});
+  std::cin.imbue(std::locale{std::cin.getloc(), new std::ctype<char>});
+}
+
+int iters = part2 ? 64 : 1;
+std::array<unsigned char, 256> list;
+std::iota(std::begin(list), std::end(list), 0);
+
+unsigned char skip{0}, pos {0};
+while (iters--)
+  for (unsigned char length : lengths) {
+    std::reverse(std::begin(list), std::begin(list) + length);
+    unsigned char delta = length + skip++;
+    std::rotate(std::begin(list), std::begin(list) + delta, std::end(list));
+    pos += delta;
+  }
+std::rotate(std::begin(list), std::end(list) - pos, std::end(list));
+
+if (part2) {
+  auto const [flags, fill] = std::pair(std::cout.flags(std::ios::hex), std::cout.fill('0'));
+  for (auto b = std::begin(list); b != std::end(list); std::advance(b, 16))
+    std::cout << std::setw(2) << std::accumulate(b, std::next(b, 16), 0, std::bit_xor<void>());
+  std::cout.flags(flags), std::cout.fill(fill);
+} else {
+  std::cout << list[0] * list[1];
+}
+std::cout << '\n';
+
+________________________________________________________________________________________
+
+Python3:
+from functools import reduce
+from itertools import accumulate, zip_longest as zipl
+from operator import mul, xor
+
+def reverse_sublist(l, a, b):
+    if a <= b: l[a:b] = l[a:b][::-1]
+    else: r = (l[a:]+l[:b])[::-1]; l[a:], l[:b] = r[:len(l)-a], r[-b or len(r):]
+
+def hash_round(lens, elems, pos=0, skip=0, accumulator=lambda x, y: (y[0], reduce(sum, x))):
+    for (skip, s), pos in accumulate(zipl(enumerate(lens, skip), [pos]), accumulator):
+        reverse_sublist(elems, pos % len(elems), (pos+s) % len(elems))
+    return elems, skip+s+pos, skip+1
+
+def solve1(input, n=256):
+    return mul(*hash_round([int(l) for l in input.split(',')], list(range(n)))[0][:2])
+
+def solve2(input, n=256, g=16, rounds=64, suffix=[17, 31, 73, 47, 23], pos=0, skip=0):
+    elems, lengths = [*range(n)], [ord(c) for c in input.strip()] + suffix
+    for _ in range(rounds): elems, pos, skip = hash_round(lengths, elems, pos, skip)
+    return bytes(reduce(xor, elems[g*k:g*(k+1)]) for k in range(n//g)).hex()

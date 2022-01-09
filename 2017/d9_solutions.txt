@@ -1,0 +1,63 @@
+solution day9 perl regex:
+
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+my ($part1, $part2, $depth) = (0) x 3;
+
+<> =~ m/^({(?{$part1 += ++$depth})(?:(?1)|[^{}<]*+|<(?:!.|[^>](?{$part2++}))*>)*}(?{$depth--}))$/;
+
+printf "Part 1: %d\n", $part1;
+printf "Part 2: %d\n", $part2;
+
+commented:
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+my ($part1, $part2, $depth) = (0) x 3;
+
+<> =~ m/
+  ^
+    # Match one "{group}"
+    (
+
+        # Match "{", then increment $depth and add to $part1 score
+        { (?{ $part1 += ++$depth })
+
+            # Match any combination of:
+            (?:
+               # Nested "{group}" (recursive subpattern match)
+               (?1)
+            |
+               # Other stuff that isn't "{" "}" or "<".  The "+"
+               # makes it a "possessive" match (prevents backtracking)
+               [^{}<]*+
+            |
+               # Garbage
+               <
+
+                   # Match any combination of:
+                   (?:
+                        # "Canceled" character
+                        !.
+                     |
+                        # Anything else except ">", incrementing $part2
+                        [^>] (?{ $part2++ })
+                   )*
+
+               >
+            )*
+
+        # Match "}" then decrement $depth
+        } (?{ $depth-- })
+
+    )
+  $
+/x;
+
+printf "Part 1: %d\n", $part1;
+printf "Part 2: %d\n", $part2;

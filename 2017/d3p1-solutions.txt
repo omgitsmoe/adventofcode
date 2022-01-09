@@ -1,0 +1,30 @@
+﻿https://www.reddit.com/r/adventofcode/comments/7hdw0s/2017_day_3_my_reaction_when_i_saw_todays_challenge/
+pasokan
+
+Analysis
+
+The diagonal running from 1 through 9 (South East), consists of 1, 9, 25 ... That is numbers of the form (2n+1)2
+
+The point of interest is the next odd square after 2777678.
+
+527×527=277729
+
+Easily we get the fact that the target location is 277729−277678=51 squares to the left from the SE corner of a 527×527 grid.
+
+A rule for manhattan distances: The distance between two points on a diagonal is twice the diagonal distance. Start with 4 points and then add an outer square to see the idea.
+
+The diagonal distance between the point (2n+1)2 and 1 is n .
+
+Verify with 49 and 1 as well as 25 and 1 .
+
+So the manhattan distance from 527×527 to 1 is 526. And 277678 is 51 to the left. So the answer is 526−51=475
+
+__________________________________________________________________________
+
+__Abigail__ 1 Punkt vor 13 Tagen 
+I didn't find day 3 to be very hard. It's easy to see (if you didn't know this already, number spirals aren't that rare) that the right-bottom corner points are (2k + 1)2, k >= 0, and that the length of each square is (2k + 1).
+
+Given that, it's easy to calculate the values on the corners of the "ring" the input number is in; given the corner values, it's trivial to calculate the midpoint values of between each corner. The it's a matter of finding the distance to the nearest midpoint, and from there to the center (the center will be k away from the midpoint -- in a straight line).
+
+__________________________________________________________________________
+

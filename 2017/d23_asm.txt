@@ -1,0 +1,32 @@
+b=99                        # a: 1, b: 0, c: 0, d: 0, e: 0, f: 0, g: 0, h: 0
+c=b                         # a: 1, b: 99, c: 0, d: 0, e: 0, f: 0, g: 0, h: 0
+jnz a 2                     # a: 1, b: 99, c: 99, d: 0, e: 0, f: 0, g: 0, h: 0
+jnz 1 5                     # skipped always (part2)
+b*=100                      # a: 1, b: 99, c: 99, d: 0, e: 0, f: 0, g: 0, h: 0
+b-=-100000 -> b+100000      # a: 1, b: 9900, c: 99, d: 0, e: 0, f: 0, g: 0, h: 0
+c=b                         # a: 1, b: 109900, c: 99, d: 0, e: 0, f: 0, g: 0, h: 0
+c-=-17000 -> c+17000        # a: 1, b: 109900, c: 109900, d: 0, e: 0, f: 0, g: 0, h: 0
+f=1                         # a: 1, b: 109900, c: 126900, d: 0, e: 0, f: 0, g: 0, h: 0
+d=2                         # a: 1, b: 109900, c: 126900, d: 0, e: 0, f: 1, g: 0, h: 0
+e=2                         # a: 1, b: 109900, c: 126900, d: 2, e: 0, f: 1, g: 0, h: 0
+g=d                         # a: 1, b: 109900, c: 126900, d: 2, e: 2, f: 1, g: 0, h: 0
+g*=e                        # a: 1, b: 109900, c: 126900, d: 2, e: 2, f: 1, g: 2, h: 0
+g-=b                        # a: 1, b: 109900, c: 126900, d: 2, e: 2, f: 1, g: 4, h: 0
+jnz g 2 -> if g!=0: goto 17     # a: 1, b: 109900, c: 126900, d: 2, e: 2, f: 1, g: 17000, h: 0
+f=0                         # skipped, but not if e/2 == b
+e-=-1 -> e+1                # a: 1, b: 109900, c: 126900, d: 2, e: 2, f: 1, g: 17000, h: 0
+g=e                         # a: 1, b: 109900, c: 126900, d: 2, e: 3, f: 1, g: 17000, h: 0
+g-=b                        # a: 1, b: 109900, c: 126900, d: 2, e: 3, f: 1, g: 3, h: 0
+jnz g -8 -> if g!=0: goto 12    # a: 1, b: 109900, c: 126900, d: 2, e: 3, f: 1, g: 126897, h: 0 -> REPEAT 12:19 till e==b (109900)
+d-=-1 -> d+1  
+g=d           
+g-=b          
+jnz g -13 -> if g!=0: goto 11 -> REPEAT 11:19 till d==b (109900)
+jnz f 2 -> if f!=0: goto 27 
+h-=-1 -> h+1                # h+1 if f==0 -> f=0 if b is not a prime number due to lines 13-15 (g*e==b since g==0 needed to set f to 0) -> check if any of e(counting up from 2 to b(<-excluded)) evenly divides b -> yes -> h+1 -> due to line 30 and 33 this gets repeated while b is increasing by 17 till b==c -> so 1000 times since c-b=17000
+g=b            
+g-=c                     
+jnz g 2 -> if g!=0: goto 31
+jnz 1 3 -> goto TERMINATE   -> skipped unless b==c (c=126900)
+b-=-17 -> b+17              
+jnz 1 -23 -> goto 9         -> REPEAT 9:32 till b==c

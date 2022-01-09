@@ -1,0 +1,11 @@
+D:\SYNC\coding\adventofcode19\obj\Debug\netcoreapp3.1\AdventOfCode2019.csprojAssemblyReference.cache
+D:\SYNC\coding\adventofcode19\obj\Debug\netcoreapp3.1\AdventOfCode2019.AssemblyInfoInputs.cache
+D:\SYNC\coding\adventofcode19\obj\Debug\netcoreapp3.1\AdventOfCode2019.AssemblyInfo.cs
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.exe
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.deps.json
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.runtimeconfig.json
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.runtimeconfig.dev.json
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.dll
+D:\SYNC\coding\adventofcode19\bin\Debug\netcoreapp3.1\AdventOfCode2019.pdb
+D:\SYNC\coding\adventofcode19\obj\Debug\netcoreapp3.1\AdventOfCode2019.dll
+D:\SYNC\coding\adventofcode19\obj\Debug\netcoreapp3.1\AdventOfCode2019.pdb

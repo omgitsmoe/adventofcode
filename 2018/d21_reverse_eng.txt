@@ -1,0 +1,57 @@
+#ip 2
+l0 seti 123 0 3 -> r[3] = 123
+l1 bani 3 456 3 -> r[3] &= 456
+l2 eqri 3 72 3 -> r[3] = 1 if r[3] == 72 else 0
+l3 addr 3 2 2 -> r[2] += r[3] 
+l4 seti 0 0 2 -> r[2] = 0 -> skipped if binary ops work correctly
+l5 seti 0 5 3 -> r[3] = 0
+--------------^^ only checking binary ops
+l6 bori 3 65536 1 -> r[1] = r[3] | 65536
+l7 seti 10373714 2 3 -> r[3] = 10373714
+l8 bani 1 255 5 -> r[5] = r[1] & 255
+l9 addr 3 5 3 -> r[3] += r[5]
+l10 bani 3 16777215 3 -> r[3] &= 16777215
+l11 muli 3 65899 3 -> r[3] *= 65899
+l12 bani 3 16777215 3 -> r[3] &= 16777215
+l13 gtir 256 1 5 -> r[5] = 1 if 256 > r[1] else 0
+l14 addr 5 2 2 -> r[2] += r[5]
+l15 addi 2 1 2 -> r[2] += 1
+l16 seti 27 7 2 -> r[2] = 27
+l17 seti 0 3 5 -> r[5] = 0
+l18 addi 5 1 4 -> r[4] = r[5] + 1
+l19 muli 4 256 4 -> r[4] *= 256
+l20 gtrr 4 1 4 -> r[4] = 1 if r[4] > r[1] else 0
+l21 addr 4 2 2 -> r[2] += r[4]
+l22 addi 2 1 2 -> r[2] += 1
+l23 seti 25 4 2 -> r[2] = 25
+l24 addi 5 1 5 -> r[5] += 1
+l25 seti 17 0 2 -> r[2] = 17
+l26 setr 5 2 1 -> r[1] = r[5]
+l27 seti 7 4 2 -> r[2] = 7
+l28 eqrr 3 0 5 -> r[5] = 1 if r[3] == r[0] else 0
+l29 addr 5 2 2 -> r[2] += r[5]
+l30 seti 5 7 2 -> r[2] = 5
+
+# r[1] = r[3] | 65536 #l6
+r[1] = 65536
+r[3] = 10373714
+while True:
+    r[5] = r[1] & 255 #l8
+    r[3] += r[5]
+    r[3] &= 16777215
+    r[3] *= 65899
+    r[3] &= 16777215
+    if r[1] < 256:
+        if r[3] == r[0]:
+            break
+        # goto l6
+        r[1] = r[3] | 65536 #l6
+        r[3] = 10373714
+        continue  # so we dont run vv
+    # while r[1] < (256 * (r[5] + 1)):
+    #     r[5] += 1
+    # r[1] = r[5]
+    # -> above is summarized to integer division of r[1] by 256
+    r[1] = r[1]//256
+    # goto l8
+

@@ -1,0 +1,12 @@
+when i
+#include "lib/MD5.h"
+
+then i have to either compile my main file together with MD5.cpp to make it work
+cl /EHsc -Z7 d5.cpp lib\MD5.cpp
+
+or i compile MD5.cpp seperately (using -c option which only compiles without linking)
+cl -c /EHsc lib\MD5.cpp -Fo:lib\
+and then i compile my main file and link it with the previously compiled obj file
+cl /EHsc -Z7 d5.cpp lib\MD5.obj -Fo:build\ -Fe:build\
+
+or i can just include all cpp files into one file that i compile -> unity build (which casey uses)
