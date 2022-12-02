@@ -2,7 +2,7 @@ use std::vec;
 use std::fs;
 use std::io;
 
-pub fn solve() -> Result<(), io::Error> {
+pub fn main() -> Result<(), io::Error> {
     let contents = fs::read_to_string("../d01.in")?;
     let mut elves = vec!();
 

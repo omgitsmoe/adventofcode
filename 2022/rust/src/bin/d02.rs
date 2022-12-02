@@ -20,7 +20,7 @@ enum Outcome {
 }
 const OUTCOMES: [Outcome; 3] = [Outcome::DRAW, Outcome::LOSE, Outcome::WIN];
 
-pub fn solve() -> Result<(), io::Error> {
+pub fn main() -> Result<(), io::Error> {
     let contents = fs::read_to_string("../d02.in")?;
 
     let mut points = 0;
