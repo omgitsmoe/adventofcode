@@ -8,8 +8,6 @@
 
 using namespace std;
 
-typedef tuple<char, char> Round;
-
 #define WIN 6
 #define DRAW 3
 #define LOSE 0
@@ -36,33 +34,11 @@ char get_option(char in) {
 
 // look up table for outcomes/points
 // base is for me having rock
-// indices for paper and scissors need to be shifted by 1 and by 2 respectively
 // rock: rock, paper, scissors
-// rock 0
-// paper +1
-// scissors +2
-// me rock: o0m0 D; o1m0 L; o2m0 W;
-// me paper: o0m1 +1 W; o1m1 +1 D; o2m1 +1 L;
-// me sciss: o0m2 +2 L; o1m2 +2 W; o2m2 +2 D;
 char POINT_LUT[3] = {DRAW, LOSE, WIN};
-// index shift into LUT for rock, paper, scissors
-char IDX_SHIFT[3] = {0, 1, 2};
-
-// char[][3] = {
-//     // rock
-//     // rock, paper, scissors
-//     {DRAW, LOSE, WIN},
-//     // paper
-//     // rock, paper, scissors
-//     {WIN, DRAW, LOSE},
-//     // scissors
-//     // rock, paper, scissors
-//     {LOSE, WIN, DRAW},
-// };
 
 int main() {
     ifstream infile("d02.in");
-    vector<Round> rounds;
 
     string curline;
     int points = 0;
@@ -73,9 +49,7 @@ int main() {
         char opponent = get_option(curline[0]);
         char me = get_option(curline[2]);
         // cout << "Opp: " << +opponent << " Me: " << +me << "\n";
-        // look-up outcome points in LUT shifting look-up index by the option we played
-        // int outcome = POINT_LUT[((me - 1) + IDX_SHIFT[me - 1] + (opponent - 1)) % 3];
-        // not needed ^
+        // distance from each other determines 0=D/1=L/2=W
         char idx = (opponent - me) % 3;
         // when one modulo opperand is negative whether the outcome is neg. is implemenation defined
         int outcome = POINT_LUT[idx < 0 ? idx + 3 : idx];
