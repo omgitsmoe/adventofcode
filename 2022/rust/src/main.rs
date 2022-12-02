@@ -4,6 +4,7 @@ use std::io;
 // declare subfolder as module here (could also use separate days.rs or days/mod.rs)
 mod days {
     pub mod d01;
+    pub mod d02;
 }
 
 fn main() -> Result<(), io::Error> {
@@ -15,6 +16,7 @@ fn main() -> Result<(), io::Error> {
 
     match day {
         1 => days::d01::solve(),
+        2 => days::d02::solve(),
         _ => unimplemented!(),
     };
 
