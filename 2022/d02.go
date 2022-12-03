@@ -7,33 +7,11 @@ import (
     "strings"
 )
 
-const (
-    LOSE int = 0
-    DRAW     = 3
-    WIN      = 6
-)
-
-func get_option(c byte) byte {
-    switch c {
-    case 'A', 'X':
-        return 1;
-    case 'B', 'Y':
-        return 2;
-    case 'C', 'Z':
-        return 3;
-    }
-
-    panic("Unexpected")
-}
-
 func main() {
     b, err := os.Open("d02.in")
     if err != nil {
         fmt.Println(err)
     }
-
-    // no constant array in go :/
-    var OUTCOMES = []int{DRAW, LOSE, WIN};
 
     scanner := bufio.NewScanner(b)
     points := 0;
@@ -46,44 +24,34 @@ func main() {
             continue;
         }
 
-        opponent := get_option(ln[0])
-        me := get_option(ln[2])
+        opponent := ln[0] - 'A'
+        me := ln[2] - 'X'
+        // see cpp for explanation
         // no ternary :/
         // needed since % in go is remainder and not modulo so -2%3 == 2 instead of 1
-        var outcome_idx int  // extra var needed since := in if doesn't leak
+        var outcome int  // extra var needed since := in if doesn't leak
         // go does not panic on over/underflow -> convert byte to int
-        if diff := int(opponent) - int(me); diff < 0 {
-            outcome_idx = diff + 3
+        if diff := int(me) - int(opponent) + 1; diff < 0 {
+            outcome = diff + 3
         } else {
-            outcome_idx = diff % 3
+            outcome = diff % 3
         }
-        outcome := OUTCOMES[outcome_idx]
         // fmt.Println(ln);
         // fmt.Println("O ", outcome, "op ", opponent, "me ", me, "oidx ", outcome_idx);
 
-        points += outcome
-        points += int(me)
+        points += outcome * 3
+        points += int(me) + 1
         
         // part2
-        var needed_outcome int
-        var outcome_shift int
-        switch ln[2] {
-        case 'X':
-            needed_outcome = LOSE
-            // need opponent to WIN
-            outcome_shift = 2
-        case 'Y':
-            needed_outcome = DRAW
-            outcome_shift = 0
-        case 'Z':
-            needed_outcome = WIN
-            // need opponent to LOSE
-            outcome_shift = 1
+        needed_outcome := int(me)
+        var needed_me int
+        if outcome_shift := int(opponent) - 1 + needed_outcome; outcome_shift < 0 {
+            needed_me = outcome_shift + 3
+        } else {
+            needed_me = outcome_shift % 3
         }
 
-        // fine to use %3 since it can't underflow
-        needed_me := 1 + (int(opponent) + outcome_shift - 1) % 3
-        points2 += needed_outcome + needed_me
+        points2 += needed_outcome * 3 + needed_me + 1
     }
     if err := scanner.Err(); err != nil {
         fmt.Println("Error reading from file input:", err)

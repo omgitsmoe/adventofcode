@@ -8,34 +8,6 @@
 
 using namespace std;
 
-#define WIN 6
-#define DRAW 3
-#define LOSE 0
-
-char get_option(char in) {
-    char ret;
-    switch (in) {
-        case 'A':
-        case 'X':
-            ret = 1;
-            break;
-        case 'B':
-        case 'Y':
-            ret = 2;
-            break;
-        case 'C':
-        case 'Z':
-            ret = 3;
-            break;
-    }
-
-    return ret;
-}
-
-// look up table for outcomes/points
-// base is for me having rock
-// rock: rock, paper, scissors
-char POINT_LUT[3] = {DRAW, LOSE, WIN};
 
 int main() {
     ifstream infile("d02.in");
@@ -46,46 +18,32 @@ int main() {
     while (getline(infile, curline)) {
         if (curline.size() == 0) continue;
         // cout << curline << '\n';
-        char opponent = get_option(curline[0]);
-        char me = get_option(curline[2]);
+        char opponent = curline[0] - 'A';
+        char me = curline[2] - 'X';
         // cout << "Opp: " << +opponent << " Me: " << +me << "\n";
-        // distance from each other determines 0=D/1=L/2=W
-        char idx = (opponent - me) % 3;
+        // 0 rock 1 paper 2 scissors
+        // base needs to be from opponents view so we have D/L/W (instead of D/W/L)
+        // -> shift by one so we get 0=L/1=D/2=W
+        char offset = me - opponent + 1;
         // when one modulo opperand is negative whether the outcome is neg. is implemenation defined
-        int outcome = POINT_LUT[idx < 0 ? idx + 3 : idx];
-        points += outcome;
+        offset = offset >= 0 ? offset % 3 : offset + 3;
+        int outcome_points = offset * 3;
+        points += outcome_points;
         // points for the chosen option
-        points += me;
-        // cout << "O " << outcome << " + " << +me << "\n";
+        points += me + 1;
+        // cout << "O " << outcome << " + " << +(me + 1) << "\n";
 
         // part2
-        // if opponent chooses rock:
-        // need to choose same to DRAW; +1 (so paper) to WIN; +2 (so scissors) to LOSE;
-        // if opponent chooses paper:
-        // need to choose same to DRAW; +1 (so scissors) to WIN; +2 (so rock) to LOSE;
-        char needed_outcome;
-        char outcome_shift;
-        switch (curline[2]) {
-            case 'X':
-                needed_outcome = LOSE;
-                // need opponent to WIN
-                outcome_shift = 2;
-                break;
-            case 'Y':
-                needed_outcome = DRAW;
-                outcome_shift = 0;
-                break;
-            case 'Z':
-                needed_outcome = WIN;
-                // need opponent to LOSE
-                outcome_shift = 1;
-                break;
-        }
+        // 0 loss 1 draw 2 win
+        char needed_outcome = me;
+        // since opp==me is normally the start (draw) we need to shift by one to the left
+        // normally 0 draw 1 win 2 loss
+        // shifted 0 loss 1 draw 2 win
+        char outcome_shift = opponent - 1 + needed_outcome;
+        char needed_me = outcome_shift >= 0 ? outcome_shift % 3 : outcome_shift + 3;
 
-        // opponent - 1 to make it 0-based
-        char needed_me = 1 + (outcome_shift + opponent - 1) % 3;
-        points2 += needed_outcome + needed_me;
-        cout << "O " << +needed_outcome << " + " << +needed_me << "\n";
+        points2 += needed_outcome * 3 + needed_me + 1;
+        // cout << "O " << +needed_outcome << " + " << +needed_me << "\n";
     }
 
     cout << "Part1: Total score is " << points << "\n";
