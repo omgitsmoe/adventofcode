@@ -35,45 +35,28 @@ pub fn main() !void {
         mark_items(&items2, compartment2);
         // result will be saved in first set
         items1.setIntersection(items2);
-        var idx: u32 = 0;
-        while (idx < 53) : (idx += 1) {
-            if (items1.isSet(idx)) {
-                point_sum += idx + 1;
-            }
-        }
+        // assumes there's only one DUPLICATE
+        point_sum += 1 + @intCast(u32, (items1.findFirstSet() orelse @panic("No active bit")));
     }
 
     split_iter = std.mem.split(u8, contents, "\n");
     var common_point_sum: u32 = 0;
-    var rucksacks = [3]std.bit_set.StaticBitSet(53){
-        std.bit_set.StaticBitSet(53).initEmpty(),
-        std.bit_set.StaticBitSet(53).initEmpty(),
-        std.bit_set.StaticBitSet(53).initEmpty(),
-    };
-    // start at 1 otherwise mod3 is instantly ==0
-    var idx: u32 = 1;
-    while (split_iter.next()) |line| : (idx += 1) {
-        if (line.len == 0) continue;
+    while (true) {
+        var items1 = std.bit_set.StaticBitSet(53).initEmpty();
+        mark_items(&items1, split_iter.next() orelse break);
+        var items2 = std.bit_set.StaticBitSet(53).initEmpty();
+        mark_items(&items2, split_iter.next() orelse break);
+        var items3 = std.bit_set.StaticBitSet(53).initEmpty();
+        mark_items(&items3, split_iter.next() orelse break);
 
-        const items = &rucksacks[idx % 3];
-        mark_items(items, line);
-
-        if (idx % 3 == 0) {
-            // result will be saved in first set
-            rucksacks[0].setIntersection(rucksacks[1]);
-            rucksacks[0].setIntersection(rucksacks[2]);
-            var bit_idx: u32 = 0;
-            while (bit_idx < 53) : (bit_idx += 1) {
-                if (rucksacks[0].isSet(bit_idx)) {
-                    common_point_sum += bit_idx + 1;
-                }
-            }
-
-            // reset bitsets
-            rucksacks[0] = std.bit_set.StaticBitSet(53).initEmpty();
-            rucksacks[1] = std.bit_set.StaticBitSet(53).initEmpty();
-            rucksacks[2] = std.bit_set.StaticBitSet(53).initEmpty();
-        }
+        // result will be saved in first set
+        items1.setIntersection(items2);
+        items1.setIntersection(items3);
+        // assumes there's only one DUPLICATE
+        common_point_sum += 1 + @intCast(
+            u32,
+            (items1.findFirstSet() orelse @panic("No active bit")),
+        );
     }
 
     std.debug.print("Part1: Duplicate item prios are {}\n", .{point_sum});
