@@ -7,6 +7,14 @@
 // considered bad practice
 using namespace std;
 
+void mark_items(bitset<53> &items, const string &curline) {
+    for (const char &c : curline) {
+        int prio = c <= static_cast<int>('Z') ?
+            c - static_cast<int>('A') + 26 :
+            c - static_cast<int>('a');
+        items.set(prio);
+    }
+}
 
 // NOTE: msvc only shows unhandled exceptions in the debugger
 // otherwise the program just crashes
@@ -24,27 +32,16 @@ int main() {
         // cout << compartment1 << endl << compartment2 << endl;
         // a-z prio: 1--26
         // A-Z prio: 27--52
-        bitset<53> items; // only items in 1 technichally
-        // better to use 2 sep loops but I wanted to test the list literal for loop
-        for (const string &s : { compartment1, compartment2 }) {
-            for (const char &c : s) {
-                int idx = c <= static_cast<int>('Z') ?
-                    c - static_cast<int>('A') + 26 :
-                    c - static_cast<int>('a');
-                // cout << "Char '" << c << "' -> idx: " << idx << endl;
-                // letters can be duplicate per compartment, so only want to set them in compartment1
-                // and check them in 2
-                // where we also need to reset them so they can't be counted more than once
-                // ... this really would've been better with sep loops or using a normal set
-                // or use two bitsets instead and and them together
-                if (items.test(idx) && s == compartment2) {
-                    // cout << "Duplicate " << c << " value " << idx + 1 << endl;
-                    prio_sum += idx + 1;
-                    // reset so we don't count it a 2nd time
-                    items.set(idx, false);
-                } else if (s == compartment1) {
-                    items.set(idx);
-                }
+        bitset<53> items1;
+        bitset<53> items2;
+        mark_items(items1, compartment1);
+        mark_items(items2, compartment2);
+        auto result = items1 & items2;
+        // iterate over result bitset adding the prio (idx in bitset + 1) if item was in both
+        // compartments (is true after &)
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (result[i]) {
+                prio_sum += i + 1;
             }
         }
     }
@@ -63,12 +60,7 @@ int main() {
 
         // make sure this is a reference or use a pointer!
         auto &items = rucksacks[idx % 3];
-        for (const char &c : curline) {
-            int prio = c <= static_cast<int>('Z') ?
-                c - static_cast<int>('A') + 26 :
-                c - static_cast<int>('a');
-            items.set(prio);
-        }
+        mark_items(items, curline);
 
         if ((idx % 3) == 0) {
             auto result = (rucksacks[0] & rucksacks[1]) & rucksacks[2];
