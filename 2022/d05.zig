@@ -21,6 +21,7 @@ fn clone(
     return result;
 }
 
+// NOTE: there is std.mem.reverse which I couldn't find searching for reverse on the stdlib docs :/
 fn reverse(comptime T: type, buf: []T) void {
     switch (buf.len) {
         1 => return,
@@ -50,6 +51,7 @@ pub fn main() !void {
     defer allocator.free(contents);
 
     var stacks = std.ArrayList(std.ArrayList(u8)).init(allocator);
+    // tokenize better if you don't care about empty lines
     var split_iter = std.mem.split(u8, contents, "\n");
     outer: while (split_iter.next()) |line| {
         var idx: u32 = 0;
