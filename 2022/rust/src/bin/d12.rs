@@ -1,6 +1,7 @@
 use std::io;
 use std::fs;
 use std::collections::VecDeque;
+use std::time::{Instant};
 
 #[derive(Debug, Clone)]
 struct Point {
@@ -126,6 +127,7 @@ pub fn main() -> Result<(), io::Error> {
         }
     }
 
+    let timer = Instant::now();
     let steps1 = dijkstra(grid.clone(), start, end.clone(), cols);
     println!("Part1: Lowest amount of steps required: {}", steps1);
 
@@ -139,6 +141,7 @@ pub fn main() -> Result<(), io::Error> {
         }
     }
     println!("Part2: Lowest amount of steps required: {}", steps2);
+    println!("Took {:?}", timer.elapsed());
 
     Ok(())
 }

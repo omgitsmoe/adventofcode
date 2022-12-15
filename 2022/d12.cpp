@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <chrono>
 
 #define INDEX(y, x) (((y) * cols) + (x))
 
@@ -28,20 +29,24 @@ int dijkstra(std::vector<Node> grid, Point start, Point end, int cols) {
     start_node.path_cost = 0;
     start_node.visited = true;
     // should store sth. else, too much pointer chasing like this
-    std::deque<Node*> q{ &start_node };
+    // -> from ~48ms to ~38ms by removing pointers and using indices to look up the nodes
+    std::deque<Point> q{ start };
 
     // up, down, right, left
     Point neighbours[4] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
     while (!q.empty()) {
         // find queued node with min dist
         auto min = q.begin();
+        auto& min_node = grid[INDEX(min->y, min->x)];
         for (auto it = q.begin(); it != q.end(); ++it) {
             // it = Node** => we have to deref once and then use ->
-            if ((*it)->path_cost < (*min)->path_cost) {
+            auto& node = grid[INDEX(it->y, it->x)];
+            if (node.path_cost < min_node.path_cost) {
                 min = it;
+                min_node = node;
             }
         }
-        Node& current = **min;
+        Node& current = min_node;
         // actually remove the item
         q.erase(min);
         // std::cout << "P y " << current.y << " x " << current.x << std::endl;
@@ -71,7 +76,7 @@ int dijkstra(std::vector<Node> grid, Point start, Point end, int cols) {
             if (!next_node.visited) {
                 // not yet visited
                 // queue to visit adjacent nodes
-                q.push_back(&next_node);
+                q.push_back(next_node.pos);
                 next_node.visited = true;
             }
         }
@@ -133,6 +138,7 @@ int main() {
     int rows = grid.size() / cols;
 
 
+    auto t1 = std::chrono::high_resolution_clock::now();
     int part1_steps = dijkstra(grid, start, end, cols);
     std::cout << "Part1: Lowest steps required " << part1_steps << std::endl;
 
@@ -147,4 +153,8 @@ int main() {
         }
     }
     std::cout << "Part2: Lowest steps required " << part2_steps << std::endl;
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+    std::cout << "Took: " << duration.count() << "ms" << std::endl;
 }
