@@ -129,6 +129,9 @@ printfn "We're interactive OMG"
 // dotnet fsi: ~12s
 // so it actually doesn't make a difference!
 // (also does not get faster on consecutive runs!)
+// NOTE: as long as we time it ourselves here with stopwatch, if we use time or Measure-Command
+// provided by the shell then the compilation time is included and then it will make a big
+// difference
 
 // python: 1.5s (with binsearch; without 6.7s)
 // julia 0.4s with same binsearch as python (own impl); julia 5s (with stdlib bin search 0.5s)

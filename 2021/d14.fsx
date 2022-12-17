@@ -11,7 +11,7 @@ let rules =
     input
     |> Seq.skip 2
     |> Seq.map (fun l ->
-        match l.Split(" -> ") with
+        match l.Split([|" -> "|], StringSplitOptions.RemoveEmptyEntries) with
             | [|pair; result|] -> (pair |> Seq.toList, Seq.head result)
             | _ -> failwith "Unexpected rule format")
     |> Map.ofSeq
