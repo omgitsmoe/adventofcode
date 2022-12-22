@@ -25,6 +25,29 @@ public:
         return m_last_end < m_in.size();
     }
 
+    // NOTE: you will have to account for SplitIter always skipping
+    // the pattern after the last returned part (see below)
+    void change_pattern(std::string new_pattern) {
+        // NOTE:
+        // old ", " -> change_pattern(" ")
+        // a, b, c d e f
+        //    ^  ^
+        //    |  | last_end/next returned part
+        //    last returned part
+        // => will work
+        // old "," -> change_pattern(", ")
+        // a,b, c, d, e, f
+        //   ^ ^
+        //   | | last_end/next returned part
+        //   last returned part
+        // => will return " c"
+        m_pattern = std::move(new_pattern);
+    }
+
+    void skip() {
+        advance();
+    }
+
     void next(std::string& out) {
         RangeHelper next_part = advance();
         out = m_in.substr(next_part.start, next_part.end_exclusive - next_part.start);
@@ -72,7 +95,7 @@ private:
             m_last_end = m_in.size();
         } else {
             result.start = m_last_end;
-            result.end_exclusive = next_patt_idx - m_last_end;
+            result.end_exclusive = m_last_end + (next_patt_idx - m_last_end);
             m_last_end = next_patt_idx + m_pattern.size();
         }
 
