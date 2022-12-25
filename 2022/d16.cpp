@@ -9,6 +9,7 @@
 #include <tuple>
 #include <algorithm>
 #include <chrono>
+#include <unordered_map>
 
 #include "utils.cpp"
 
@@ -94,16 +95,34 @@ bool share_elements(SetA&& a, SetB&& b, Compare comp = Compare()) {
     return false;
 }
 
+using SeenLookupType = std::tuple<int, std::string, BitMapType>;
+struct Hash {
+    size_t operator()(const SeenLookupType& key) const {
+        // combine hashes with commutative operation like XOR ^ or plus +
+        return std::hash<int>()(std::get<0>(key)) ^
+            std::hash<std::string>()(std::get<1>(key)) ^
+            std::hash<BitMapType>()(std::get<2>(key));
+    }
+};
+
+struct KeyEq {
+    bool operator()(const SeenLookupType& lhs, const SeenLookupType& rhs) const {
+        return std::get<0>(lhs) == std::get<0>(rhs) &&
+            std::get<1>(lhs) == std::get<1>(rhs) &&
+            std::get<2>(lhs) == std::get<2>(rhs);
+    }
+};
+
 // ~26s for pt2 ~350MB... same algo in python also takes ~27s :O
 // (unoptimized) ~130s for pt2
 // NOTE: using bitmap for storing opened valves state (instead of set, so it's easily copyable and small)
 // alternative: using a bitstring ('0' for closed, '1' for open)
-size_t dfs_bitmap(std::map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
+size_t dfs_bitmap(std::unordered_map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
            BitMapType opened_valves,
            // time_left, current, open valves -> steam released RELATIVE from the time left, pos etc.
            // absolute does not make sense since you can reach the same tl,pos,opened with
            // different orders and thus different absolute steam_released values
-           std::map<std::tuple<int, std::string, BitMapType>, size_t>& seen,
+           std::unordered_map<std::tuple<int, std::string, BitMapType>, size_t, Hash, KeyEq>& seen,
            int time_left, std::string current) {
     // already seen this state
     if (seen.count(std::make_tuple(time_left, current, opened_valves)) > 0) {
@@ -140,14 +159,38 @@ size_t dfs_bitmap(std::map<std::string, Valve>& valves, const std::set<std::stri
     return max;
 }
 
+#if USE_SET
+
+using SeenLookupTypeSet = std::tuple<int, std::string, std::set<std::string>>;
+struct HashSet {
+    size_t operator()(const SeenLookupTypeSet& key) const {
+        // combine hashes with commutative operation like XOR ^ or plus +
+        size_t ret = std::hash<int>()(std::get<0>(key)) ^
+            std::hash<std::string>()(std::get<1>(key));
+        for (const auto& x : std::get<2>(key)) {
+            ret ^= std::hash<std::string>()(x);
+        }
+
+        return ret;
+    }
+};
+
+struct KeyEqSet {
+    bool operator()(const SeenLookupTypeSet& lhs, const SeenLookupTypeSet& rhs) const {
+        return std::get<0>(lhs) == std::get<0>(rhs) &&
+            std::get<1>(lhs) == std::get<1>(rhs) &&
+            std::get<2>(lhs) == std::get<2>(rhs);
+    }
+};
+
 // ~180s for pt2
 // ~230s with memoization :O
-size_t dfs(std::map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
+size_t dfs(std::unordered_map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
            std::set<std::string> opened_valves,
            // time_left, current, open valves -> steam released RELATIVE from the time left, pos etc.
            // absolute does not make sense since you can reach the same tl,pos,opened with
            // different orders and thus different absolute steam_released values
-           std::map<std::tuple<int, std::string, std::set<std::string>>, size_t>& seen,
+           std::unordered_map<std::tuple<int, std::string, std::set<std::string>>, size_t, HashSet, KeyEqSet>& seen,
            int time_left, std::string current) {
     // already seen this state
     if (seen.count(std::make_tuple(time_left, current, opened_valves)) > 0) {
@@ -185,14 +228,16 @@ size_t dfs(std::map<std::string, Valve>& valves, const std::set<std::string>& op
     return max;
 }
 
+#endif
+
 // ~33s for pt2 ~350MB
 size_t max_steam_bitmap(
-        std::map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
+        std::unordered_map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
         BitMapType starting_opened_valves,
         // time_left, current, open valves -> steam released RELATIVE from the time left, pos etc.
         // absolute does not make sense since you can reach the same tl,pos,opened with
         // different orders and thus different absolute steam_released values
-        std::map<std::tuple<int, std::string, BitMapType>, size_t>& seen,
+        std::unordered_map<std::tuple<int, std::string, BitMapType>, size_t, Hash, KeyEq>& seen,
         const int start_time) {
     // not needed, we could also use the root nodes' child_relative_max
     size_t max_released = 0;
@@ -238,11 +283,12 @@ size_t max_steam_bitmap(
             continue;
         }
 
-        if (seen.count(std::make_tuple(state.time_left, state.current, state.opened_valves)) > 0) {
+        if (auto entry = seen.find(
+                std::make_tuple(state.time_left, state.current, state.opened_valves));
+                entry != seen.end()) {
+            // entry is a pair of Key, Value
+            auto relative_max = entry->second;
             // had the same state before
-            auto relative_max =
-                seen[std::make_tuple(state.time_left, state.current, state.opened_valves)];
-
             auto absolute_max = state.steam_released + relative_max;
             if (absolute_max > max_released) max_released = absolute_max;
 
@@ -303,13 +349,15 @@ size_t max_steam_bitmap(
     return max_released;
 }
 
+#if USE_SET
+
 // ~270s for pt2
-size_t max_steam(std::map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
+size_t max_steam(std::unordered_map<std::string, Valve>& valves, const std::set<std::string>& open_candidates,
                  const std::set<std::string>& starting_opened_valves,
                  // time_left, current, open valves -> steam released RELATIVE from the time left, pos etc.
                  // absolute does not make sense since you can reach the same tl,pos,opened with
                  // different orders and thus different absolute steam_released values
-                 std::map<std::tuple<int, std::string, std::set<std::string>>, size_t>& seen,
+                 std::unordered_map<std::tuple<int, std::string, std::set<std::string>>, size_t, HashSet, KeyEqSet>& seen,
                  const int start_time) {
     // not needed, we could also use the root nodes' child_relative_max
     size_t max_released = 0;
@@ -421,10 +469,12 @@ size_t max_steam(std::map<std::string, Valve>& valves, const std::set<std::strin
     return max_released;
 }
 
+#endif
+
 int main() {
     std::ifstream infile("d16.in");
     std::string line;
-    std::map<std::string, Valve> valves;
+    std::unordered_map<std::string, Valve> valves;
     while (getline(infile, line)) {
         Valve v;
 
@@ -507,7 +557,7 @@ int main() {
 #if USE_SET
 #if RECURSIVE
     {
-        std::map<std::tuple<int, std::string, std::set<std::string>>, size_t> seen;
+        std::unordered_map<std::tuple<int, std::string, std::set<std::string>>, size_t, HashSet, KeyEqSet> seen;
         size_t max_released = dfs(valves, open_candidates, std::set<std::string>(), seen, 30, "AA");
         std::cout << "Part1 (set+rec): Maximum steam release: " << max_released << std::endl;
         max_released = dfs(valves, open_candidates, std::set<std::string>(), seen, 30, "AA");
@@ -515,7 +565,7 @@ int main() {
     }
 #else
     {
-        std::map<std::tuple<int, std::string, std::set<std::string>>, size_t> seen;
+        std::unordered_map<std::tuple<int, std::string, std::set<std::string>>, size_t, HashSet, KeyEqSet> seen;
         size_t max_released = max_steam(valves, open_candidates, std::set<std::string>(), seen, 30);
         std::cout << "Part1 (set+iter): Maximum steam release: " << max_released << std::endl;
         max_released = max_steam(valves, open_candidates, std::set<std::string>(), seen, 30);
@@ -525,7 +575,7 @@ int main() {
 #else
 #if RECURSIVE
     {
-        std::map<std::tuple<int, std::string, BitMapType>, size_t> seen;
+        std::unordered_map<std::tuple<int, std::string, BitMapType>, size_t, Hash, KeyEq> seen;
         size_t max_released = dfs_bitmap(valves, open_candidates, 0, seen, 30, "AA");
         std::cout << "Part1 (bitmap+rec): Maximum steam release: " << max_released << std::endl;
         max_released = dfs_bitmap(valves, open_candidates, 0, seen, 30, "AA");
@@ -533,7 +583,7 @@ int main() {
     }
 #else
     {
-        std::map<std::tuple<int, std::string, BitMapType>, size_t> seen;
+        std::unordered_map<std::tuple<int, std::string, BitMapType>, size_t, Hash, KeyEq> seen;
         size_t max_released = max_steam_bitmap(valves, open_candidates, 0, seen, 30);
         std::cout << "Part1 (bitmap+iter): Maximum steam release: " << max_released << std::endl;
         max_released = max_steam_bitmap(valves, open_candidates, 0, seen, 30);
@@ -551,7 +601,7 @@ int main() {
     int nr_of_objects = open_candidates.size();
     std::cout << "Non-zero valves " << nr_of_objects << std::endl;
     // time_left, current, open valves -> steam released
-    std::map<std::tuple<int, std::string, std::set<std::string>>, size_t> seen;
+    std::unordered_map<std::tuple<int, std::string, std::set<std::string>>, size_t, HashSet, KeyEqSet> seen;
     // try every combination of valves that are split between me or the elephant,
     // whereby me and the elephant are interchangeable workers though,
     // thus we only need to go up to half of the combinations
@@ -600,7 +650,7 @@ int main() {
     int nr_of_objects = open_candidates.size();
     std::cout << "Non-zero valves " << nr_of_objects << std::endl;
     // time_left, current, open valves -> steam released
-    std::map<std::tuple<int, std::string, BitMapType>, size_t> seen;
+    std::unordered_map<std::tuple<int, std::string, BitMapType>, size_t, Hash, KeyEq> seen;
     // try every combination of valves that are split between me or the elephant,
     // whereby me and the elephant are interchangeable workers though,
     // thus we only need to go up to half of the combinations
@@ -634,14 +684,26 @@ int main() {
 
     // dfs_bitmap
     // ~26s for pt2 ~350MB... same algo in python: also takes ~27s :O ~550MB
+    // -> ~13s using unordered_map
     // (unoptimized) ~130s for pt2
     // dfs
     // ~180s for pt2
     // ~230s with memoization :O
+    // -> ~90s unordered_map ~3GB
     // iterative bitmap
     // ~33s for pt2 ~350MB
+    // -> ~13s using unordered_map
     // iterative sets
     // ~270s for pt2
+    // -> ~105s unordered_map ~3GB
+    //
+    // ~60% of runtime are std::map lookups :/
+    // -> switch to unordered_map -> ~30% of runtime (now emplacing in map is ~15%)
+    //
+    // NOTE: further optimizations:
+    // - use int indices for the valves, generated when parsing them
+    //   CAREFUL: can't assume AA is first valve!
+    // - use int indices with a vector instead of an unordered_map for the seen lookup
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_pt2);
     std::cout << "Part2 took " << duration.count() << "ms" << std::endl;
