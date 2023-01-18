@@ -179,62 +179,9 @@ const StepOff = enum {
     left,
 };
 
-const NeighbourInfo = struct {
-    // order: up, right, bottom, left
-    // same as StepOff/facing
-    // viewed from "outside" as opposed to inside of the cube
-    bottom: [4]Side.Type,
-    top: [4]Side.Type,
-    front: [4]Side.Type,
-    back: [4]Side.Type,
-    left: [4]Side.Type,
-    right: [4]Side.Type,
-};
-
 fn switch_sides(current: State3D, new: State3D, step_off: StepOff) !State3D {
     // NOTE: new should contain the new state as if the side was adjacent
     var result = new;
-    // // manhattan dist: 1  2   3
-    // // turn cw         0 90 180
-    // // we can't walk from left to right and vice versa, so we don't have to account for that
-    // // negative value since facing+1 is a 90deg cw turn, so -1 is ccw
-    // // const turns_cw_per_col_dist: i8 = if (current.side.kind == .left or current.side.kind == .right or
-    // //    new.side.kind == .left or new.side.kind == .right) -2 else -1;
-    // const dr = try std.math.absInt(current.side.row - new.side.row);
-    // const dc = try std.math.absInt(current.side.col - new.side.col);
-    // var manhattan_dist = dr + dc;
-    // // side we're switching to is left -> ccw turn else clock-wise
-    // // we're currently left of the side we're switching to (on the map) / target is right,
-    // // so we turn right/cw
-    // // else ccw
-    // // up+right ccw
-    // // up+left cw
-    // // up reveresed ^
-    // // down+right cw
-    // // down+left ccw
-    // // const turn_direction: i8 = if (current.side.col < new.side.col) 1 else -1;
-    // const turn_direction: i8 = if (current.side.row < new.side.row) blk: {
-    //     // target below
-    //     break :blk if (current.side.col < new.side.col) 1 else -1;
-    // } else blk: {
-    //     const turn_dir: i8 = if (current.side.col < new.side.col) 1 else -1;
-    //     if (current.side.col == cube.bottom.?.col) {
-    //         // target up and same col as the bottom side -> reversed
-    //         break :blk turn_dir * -1;
-    //     } else {
-    //         break :blk turn_dir;
-    //     }
-    // };
-    // // same row or col -> same facing
-    // const turns_cw = if (dr == 0 or dc == 0 or manhattan_dist <= 1) 0 else @mod(
-    //     (manhattan_dist - 1) * turn_direction,
-    //     4,
-    // );
-    // result.facing = @intCast(u8, @mod((new.facing + turns_cw), 4));
-    // // if ang == 90 can use same offset, ang == 180 -> calc offset from middle and go into
-    // // opposite direction
-    // // -> can't use middle since even side length -> do same from top
-    // print("dr{}dc{} turnsCW{}\n", .{ dr, dc, turns_cw });
 
     // use opposite direction and check on new's neighbour lookup since that's our target
     // + 2 to get opposite direction
@@ -250,6 +197,10 @@ fn switch_sides(current: State3D, new: State3D, step_off: StepOff) !State3D {
     {}
     result.facing = @intCast(u8, @mod((new.facing + turns_cw), 4));
     // print("turnsCW{}\n", .{turns_cw});
+
+    // transform row/col based on amount of turns/the rotation
+    // NOTE: can apparently use this per 90deg cw turn (simplified form of 2d matrix rotation):
+    // [newX, newY] = [size-1 - newY, newX];  // u/smrq
     switch (turns_cw) {
         0 => {
             switch (step_off) {
@@ -281,8 +232,6 @@ fn switch_sides(current: State3D, new: State3D, step_off: StepOff) !State3D {
                 .left => {
                     result.row = EDGE_LENGTH - 1;
                     result.col = EDGE_LENGTH - 1 - new.row;
-                    // result.row = new.col;
-                    // result.col = EDGE_LENGTH - 1;
                 },
                 .top => {
                     result.row = new.col;
@@ -341,55 +290,6 @@ fn switch_sides(current: State3D, new: State3D, step_off: StepOff) !State3D {
     return result;
 }
 
-// for getting neighbour, based on the current side we're on, the direction we're stepping off of it
-// and the neighbour_info to look up the appropriate neighbour
-// NOTE: fails for looking up some edge cases
-fn get_next_side(cube: Cube, current_side: *const Side, dir: StepOff, neighbour_info: NeighbourInfo) !*Side {
-    // const dr = try std.math.absInt(current_side.row - cube.bottom.?.row);
-    const dc = try std.math.absInt(current_side.col - cube.bottom.?.col);
-    // const manhattan_dist = dr + dc;
-    // // side we're switching to is left -> ccw turn else clock-wise
-    // // we're currently left of the side we're switching to (on the map), so we turn right/cw
-    // // else ccw
-    // const turn_direction: i8 = if (current_side.col < cube.bottom.?.col) 1 else -1;
-    // // same row or col -> same facing
-    // // turns_cw
-    // const next_side_idx = if (dr == 0 or dc == 0 or manhattan_dist <= 1) @enumToInt(dir) else @intCast(usize, @mod(
-    //     (manhattan_dist) * turn_direction + @enumToInt(dir),
-    //     4,
-    // ));
-    // 90 cw per +col, 90ccw per -col (mb 180 per row?)
-    const turn_direction: i8 = if (current_side.col < cube.bottom.?.col) -1 else 1;
-    // const turns_cw = if (dr == 0 or dc == 0) @enumToInt(dir) else @mod(dc * turn_direction + @enumToInt(dir), 4);
-    const turns_cw = @mod(dc * turn_direction + @enumToInt(dir), 4);
-    // +90cw per row
-    // const turns_cw = @mod(dr + @enumToInt(dir), 4);
-    const next_side_idx = @intCast(usize, turns_cw);
-    // print("step off side {} in dir {} ({}) -> next side idx {}\n", .{ current_side.kind, dir, @enumToInt(dir), next_side_idx });
-    const next_side_kind = switch (current_side.kind) {
-        .bottom => neighbour_info.bottom[next_side_idx],
-        .top => neighbour_info.top[next_side_idx],
-        .front => neighbour_info.front[next_side_idx],
-        .back => neighbour_info.back[next_side_idx],
-        .left => neighbour_info.left[next_side_idx],
-        .right => neighbour_info.right[next_side_idx],
-        .none => unreachable,
-    };
-    // print("{any}\n", .{neighbour_info});
-    // print("next side kind {}\n", .{next_side_kind});
-    const next_side = switch (next_side_kind) {
-        .bottom => cube.bottom.?,
-        .top => cube.top.?,
-        .front => cube.front.?,
-        .back => cube.back.?,
-        .left => cube.left.?,
-        .right => cube.right.?,
-        .none => unreachable,
-    };
-
-    return next_side;
-}
-
 fn get_side_from_kind(cube: Cube, kind: Side.Type) *Side {
     return switch (kind) {
         .none => unreachable,
@@ -406,7 +306,6 @@ fn step_3d(
     cube: Cube,
     state: State3D,
     move: Move,
-    // neighbour_info: NeighbourInfo,
 ) !State3D {
     var new_state = state;
     switch (move) {
@@ -433,24 +332,10 @@ fn step_3d(
                 const new_row = new_state.row + offset[0];
                 const new_col = new_state.col + offset[1];
                 // switch sides
-                // TODO save neighbours when reading in sides, so know which side to go
-                // to, while respecting the actual rotation of the side piece
                 if (new_col < 0) {
                     // step off "left"
-                    // from "cube" perspective
-                    // switch (state.side.kind) {
-                    //     .bottom, .front, .top => test_state.side = cube.left.?,
-                    //     .back => test_state.side = cube.right.?,
-                    //     .left => test_state.side = cube.back.?,
-                    //     // wrong for example, needs to be top
-                    //     // but can also be front in other cases
-                    //     .right => test_state.side = cube.top.?,
-                    //     .none => unreachable,
-                    // }
 
                     // NOTE: !IMPORTANT! don't use state, since it might still be on a different side etc.
-                    // test_state = try switch_sides(new_state, test_state, .left);
-                    // test_state.side = try get_next_side(cube, test_state.side, .left, neighbour_info);
                     // look up neighbour in direction .left in the look-up array on the side we're on
                     // then get the appropriate side pointer from the Cube
                     const neighbour_kind = test_state.side.neighbours[@enumToInt(StepOff.left)];
@@ -459,57 +344,21 @@ fn step_3d(
                     test_state = try switch_sides(new_state, test_state, .left);
                 } else if (new_col >= EDGE_LENGTH) {
                     // step off "right"
-                    // switch (state.side.kind) {
-                    //     .bottom, .front, .top => test_state.side = cube.right.?,
-                    //     .back => test_state.side = cube.left.?,
-                    //     .left => test_state.side = cube.front.?,
-                    //     // was back
-                    //     .right => test_state.side = cube.bottom.?,
-                    //     .none => unreachable,
-                    // }
 
-                    // test_state.side = try get_next_side(cube, test_state.side, .right, neighbour_info);
-                    // look up neighbour in direction .right in the look-up array on the side we're on
                     const neighbour_kind = test_state.side.neighbours[@enumToInt(StepOff.right)];
                     // print("step off {} dir .right to {}\n", .{ test_state.side.kind, neighbour_kind });
                     test_state.side = get_side_from_kind(cube, neighbour_kind);
                     test_state = try switch_sides(new_state, test_state, .right);
                 } else if (new_row < 0) {
                     // step off "top"
-                    // switch (state.side.kind) {
-                    //     .bottom => test_state.side = cube.back.?,
-                    //     // was top
-                    //     .front => test_state.side = cube.bottom.?,
-                    //     // was back
-                    //     .top => test_state.side = cube.front.?,
-                    //     // was top
-                    //     .back => test_state.side = cube.bottom.?,
-                    //     // was top
-                    //     .left => test_state.side = cube.bottom.?,
-                    //     // was top; might also be bottom?? TODO
-                    //     .right => test_state.side = cube.front.?,
-                    //     .none => unreachable,
-                    // }
 
-                    // test_state.side = try get_next_side(cube, test_state.side, .top, neighbour_info);
-                    // look up neighbour in direction .top in the look-up array on the side we're on
                     const neighbour_kind = test_state.side.neighbours[@enumToInt(StepOff.top)];
                     // print("step off {} dir .top to {}\n", .{ test_state.side.kind, neighbour_kind });
                     test_state.side = get_side_from_kind(cube, neighbour_kind);
                     test_state = try switch_sides(new_state, test_state, .top);
                 } else if (new_row >= EDGE_LENGTH) {
                     // step off "bottom"
-                    // switch (state.side.kind) {
-                    //     .bottom => test_state.side = cube.front.?,
-                    //     .front => test_state.side = cube.bottom.?,
-                    //     .top => test_state.side = cube.front.?,
-                    //     .back => test_state.side = cube.bottom.?,
-                    //     // was bottom
-                    //     .left, .right => test_state.side = cube.back.?,
-                    //     .none => unreachable,
-                    // }
 
-                    // test_state.side = try get_next_side(cube, test_state.side, .bottom, neighbour_info);
                     const neighbour_kind = test_state.side.neighbours[@enumToInt(StepOff.bottom)];
                     // print("step off {} dir .bottom to {}\n", .{ test_state.side.kind, neighbour_kind });
                     test_state.side = get_side_from_kind(cube, neighbour_kind);
@@ -529,12 +378,6 @@ fn step_3d(
                     //     test_state.col,
                     //     test_state.side.kind,
                     //     test_state.facing,
-                    // });
-                    // print("=> remains r{}c{} side: {} facing: {}\n", .{
-                    //     new_state.row,
-                    //     new_state.col,
-                    //     new_state.side.kind,
-                    //     new_state.facing,
                     // });
                     break;
                 }
@@ -563,6 +406,8 @@ fn set_neighbours(
     neighbour_kind: Side.Type,
 ) void {
     // set neighbours based on the direction we're setting neighbour_kind from
+    // (based on a single known neighbour and the neighbours in clockwise order for each side
+    //  in neighbours_clockwise)
     // index into the clockwise neighbours
     const dir_idx = @enumToInt(dir);
     // correct neighbour lookup array (for the current side)
@@ -731,27 +576,6 @@ pub fn main() !void {
         }
     }
 
-    // for (sides) |r| {
-    //     for (r) |s| {
-    //         if (s != null) {
-    //             print("#", .{});
-    //         } else {
-    //             print(".", .{});
-    //         }
-    //     }
-    //     print("\n", .{});
-    // }
-    // for (sides) |r| {
-    //     for (r) |s| {
-    //         if (s) |x| {
-    //             print("r{}c{}\n", .{ x.row, x.col });
-    //             for (x.piece.items) |l| {
-    //                 print("{s}\n", .{l});
-    //             }
-    //         }
-    //     }
-    // }
-
     const neighbour_faces_clockwise = [6][4]Side.Type{
         // same as facing/StepOff
         // up, right, below, left
@@ -772,7 +596,7 @@ pub fn main() !void {
     // start with the top-left piece as the bottom and then figure out the rest
     // when folding the sides into a cube
     var cube: Cube = std.mem.zeroes(Cube);
-    // use ? to turon ?Side into Side and then take it's address
+    // use ? to turn ?Side into Side and then take it's address
     cube.bottom = &(sides[first.?.row][first.?.col]).?;
     cube.bottom.?.kind = .bottom;
     {
@@ -910,7 +734,6 @@ pub fn main() !void {
                             .none => unreachable,
                         },
                         // above
-                        // TODO do we need to look above?
                         3 => blk: {
                             break :blk .none;
                         },
@@ -1031,9 +854,9 @@ pub fn main() !void {
             for (r) |s| {
                 if (s) |x| {
                     print("{}:\n", .{x.kind});
-                    for (x.piece.items) |l| {
-                        print("{s}\n", .{l});
-                    }
+                    // for (x.piece.items) |l| {
+                    //     print("{s}\n", .{l});
+                    // }
                     for (x.neighbours) |n, di| {
                         print("{}({}): {}\n", .{ @intToEnum(StepOff, di), di, n });
                     }
@@ -1044,53 +867,9 @@ pub fn main() !void {
     }
 
     {
-        // const neighbour_info = NeighbourInfo{
-        //     // order: up, right, bottom, left
-        //     // viewed from "outside" as opposed to inside of the cube
-        //     // from bottom
-        //     .bottom = [4]Side.Type{ .back, .right, .front, .left },
-        //     // from top
-        //     // bottom with map up = cube up
-        //     // TODO .top = [4]Side.Type{ .back, .left, .front, .right },
-        //     // top with map up = cube up
-        //     .top = [4]Side.Type{ .front, .right, .back, .left },
-        //     // from the current side with bottom on bottom
-        //     // was: .front = [4]Side.Type{ .bottom, .right, .top, .left },
-        //     .front = [4]Side.Type{ .top, .right, .bottom, .left },
-        //     // viewed from front with bottom on bottom
-        //     // .back = [4]Side.Type{ .top, .left, .bottom, .right },
-        //     // viewed from back
-        //     .back = [4]Side.Type{ .top, .right, .bottom, .left },
-        //     .left = [4]Side.Type{ .top, .back, .bottom, .front },
-        //     .right = [4]Side.Type{ .top, .front, .bottom, .back },
-        // };
-
-        // viewed from current side where map up = current side up
-        // whereas version above bottom would always be at the bottom
-        // const neighbour_info = NeighbourInfo{
-        //     // order: up, right, bottom, left
-        //     .bottom = [4]Side.Type{ .back, .right, .front, .left },
-        //     .top = [4]Side.Type{ .front, .right, .back, .left },
-        //     .front = [4]Side.Type{ .bottom, .right, .top, .left },
-        //     // TODO switch l/r?
-        //     .back = [4]Side.Type{ .top, .left, .bottom, .right },
-        //     // .back = [4]Side.Type{ .top, .right, .bottom, .left },
-        //     .left = [4]Side.Type{ .top, .front, .bottom, .back },
-        //     .right = [4]Side.Type{ .top, .back, .bottom, .front },
-        // };
-        //
-        // const test_cube = Cube{
-        //     .bottom = &(sides[0][2].?),
-        //     .front = &(sides[1][2].?),
-        //     .top = &(sides[2][2].?),
-        //     .right = &(sides[2][3].?),
-        //     .left = &(sides[1][1].?),
-        //     .back = &(sides[1][0].?),
-        // };
         var state = State3D{ .row = 0, .col = 0, .facing = 1, .side = cube.bottom.? };
         for (movements.items) |mov| {
-            const new_pos = try step_3d(cube, state, mov); //, neighbour_info);
-            // const new_pos = try step_3d(test_cube, state, mov);
+            const new_pos = try step_3d(cube, state, mov);
             state = new_pos;
         }
 
