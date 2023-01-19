@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::collections::VecDeque;
 // use std::collections::BinaryHeap;
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 const USE_EXAMPLE: bool = false;
 
@@ -81,8 +82,6 @@ impl PartialOrd for State {
 }
 
 
-// NOTE: apparently you can also check the input grid position offset by minute modulo gridsize
-// to check if there will be a blizzard u/paul_sb76
 // NOTE: not caching this was the major slowdowns (5min +), was caching it previously, buth for 
 // that solution it was actually slower -.-
 fn get_state<'a>(
@@ -157,9 +156,75 @@ fn print_grid(state: HashSet<Pos>, max: &Pos) {
     println!("");
 }
 
+// NOTE: no speed gain over the caching solution (cached sets: ~300ms vs. pos offsets ~300ms)
+// very good explanation by u/segloff23
+// We can avoid any sort of simulations or caching, and instead index directly into 4 different
+// mask arrays. For example, on the test input the > mask would look like this:
+//
+// #.######      #.######
+// #>>.<^<#      #>>....#
+// #.<..<<#   => #......#
+// #>v.><>#      #>..>.>#
+// #<^v^^>#      #.....>#
+// ######.#      ######.#
+//
+// If a cell (r, c) is to be occupied at time t by a right moving blizzard, than there must have
+// been a blizzard t cells to the left, modulo our grid width since they wrap: (r, (c-t) % C). The
+// same lookup can be applied in each direction.
+//
+// You can also use only one array, and check if grid[(r, (c-t) % C)] is equal to ">", I'm just
+// precomputing this inequality. I actually found that with my implementation of A*, the caching
+// the neighbors using lcm(R, C) had no performance impact when using this approach.
+fn check_blizzard(start: &HashMap<Pos, Direction>, max: Pos, pos: Pos, t: usize) -> bool {
+    let neighbours = [
+        // up
+        Pos{ row: -1, col:  0 },
+        // right
+        Pos{ row:  0, col:  1 },
+        // down
+        Pos{ row:  1, col:  0 },
+        // left
+        Pos{ row:  0, col: -1 },
+    ];
+    // NOTE: assumes pos is valid (inside grid)
+    // NOTE: apparently you can also check the input grid position offset by minute modulo gridsize
+    // to check if there will be a blizzard u/paul_sb76
+
+    for dir in [Direction::Up, Direction::Right, Direction::Down, Direction::Left] {
+        // need to test each blizzard direction separately
+        // we need to shift the position we're testing by the __opposite__ direction that
+        // the blizzard is traveling in (or rather the dir we're currently testing)
+        let off = neighbours[(dir as usize + 2) % 4];
+        // NOTE: shift the position we're testing in the opposite direction of the blizzard's
+        // travel by the time step
+        // wrap using modulo
+        // since 0 and max.row/col are walls we need to bias row/col to 0..<max.row/col
+        // then modulo with the decreased range and then add one to bring it to it's original range
+        // so we get 1..<max.row/col
+        // % in rust is the __remainder__ -> use rem_euclid to get modulo for neg numbers
+        // NOTE: would be much easier if I excluded the walls from the grid
+        // then we could just use % width or % height
+        // e.g. row = (pos.row + off.row * t).rem_euclid(height)
+        let test = Pos{
+            row: ((pos.row as isize + off.row as isize * t as isize - 1)
+                  .rem_euclid(max.row as isize - 1) + 1) as i16,
+            col: ((pos.col as isize + off.col as isize * t as isize - 1)
+                  .rem_euclid(max.col as isize - 1) + 1) as i16,
+        };
+
+        // check if we hit a blizzard that has the direction that we're __currently__ testing
+        // alternative is to split the blizzards up into different sets, one for each direction
+        match start.get(&test) {
+            Some(found_dir) => if &dir == found_dir { return true },
+            None => continue,
+        }
+    }
+
+    false
+}
+
 fn minutes_till_goal(
-    blizzards: &Vec<(Pos, Direction)>,
-    valley_at_t: &mut Vec<HashSet<Pos>>,
+    blizzards: &HashMap<Pos, Direction>,
     max: Pos,
     start_pos: Pos,
     start_t: usize,
@@ -192,7 +257,6 @@ fn minutes_till_goal(
         let (pos, minute) = q.pop_front().unwrap();
         // println!("Pos {:?} Minute {}", pos, minute);
 
-        let next_minute = get_state(valley_at_t, &blizzards, minute + 1, &max);
         // consider all possible moves
         for off in options {
             let new_pos = pos + off;
@@ -207,7 +271,7 @@ fn minutes_till_goal(
                     new_pos.col <= 0 || new_pos.col >= max.col {
                 // hit wall
                 continue;
-            } else if next_minute.contains(&new_pos) {
+            } else if check_blizzard(&blizzards, max, new_pos, minute + 1) {
                 // occupied by blizzard
                 continue;
             } else {
@@ -221,7 +285,7 @@ fn minutes_till_goal(
             }
         }
         // wait
-        if !next_minute.contains(&pos) {
+        if !check_blizzard(&blizzards, max, pos, minute + 1) {
             // let dist_rem = dist_total - goal.row - state.pos.row + goal.col - state.pos.col;
             q.push_back((pos, minute + 1));
             seen.insert((pos, minute + 1));
@@ -267,18 +331,27 @@ pub fn main() -> Result<(), io::Error> {
     let goal = Pos { row: max_row as i16, col: max_col as i16 - 1 };
     // let dist_total = goal.row - start_pos.row + goal.col - start_pos.col;
 
-    let mut valley_at_t = vec!(
+    let blizzard_start =
         blizzards
         .iter()
-        .map(|(p, _)| *p)
-        .collect::<HashSet<_>>());
+        .map(|(p, dir)| (*p, *dir))
+        .collect::<HashMap<_,_>>();
 
-    let t_first = minutes_till_goal(&blizzards, &mut valley_at_t, max, start_pos, 0, goal);
+    // NOTE: another optimization would be that the state of the grid repeats itself
+    // the amount of steps that are needed to cycle corresponds to the least common multiple (lcm)
+    // of the width and height
+    // (if all horizonntal blizzards travelled exactly width steps and all vertical blizzards
+    //  travelled exactly height steps, then they will be at their original position)
+    // -> we would mod the minute in our seen set by the lcm
+    // (which is lcm = height * width / gcd(height, width))
+    // -> skip more states
+    // credit: u/hyper-neutrino
+    let t_first = minutes_till_goal(&blizzard_start, max, start_pos, 0, goal);
     println!("Part1: Reached exit after {} minutes", t_first);
     // back to start
-    let t_second = minutes_till_goal(&blizzards, &mut valley_at_t, max, goal, t_first, start_pos);
+    let t_second = minutes_till_goal(&blizzard_start, max, goal, t_first, start_pos);
     // back to goal again
-    let t_third = minutes_till_goal(&blizzards, &mut valley_at_t, max, start_pos, t_first + t_second, goal);
+    let t_third = minutes_till_goal(&blizzard_start, max, start_pos, t_first + t_second, goal);
     println!("Part2: Brought snacks back in {} minutes", t_first + t_second + t_third);
 
     Ok(())
