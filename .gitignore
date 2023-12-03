@@ -23,3 +23,4 @@ solutions/
 !*.zig
 !**/rust/**
 **/rust/target/
+!*.ml
