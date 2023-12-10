@@ -24,3 +24,5 @@ solutions/
 !**/rust/**
 **/rust/target/
 !*.ml
+!*.nim
+!*.roc
