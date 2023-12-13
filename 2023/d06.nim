@@ -11,15 +11,6 @@ let
         .filter(w => len(w) > 0 and isDigit w[0])
         .map(parseInt)
 
-# proc distance_a(starting_velocity: float, time_ms: float, acceleration: float): float =
-#     # Distance = v*t + 1/2*a*t^2
-#     # Where v is the velocity, t is time, and a is the acceleration.
-#     return starting_velocity * time_ms + 1/2 * acceleration * time_ms**2
-
-proc distance(velocity: float, time_ms: float): float =
-    # Distance = v*t
-    return velocity * time_ms;
-
 proc winning_variations(time: int, record_dist: int): int =
     # walk in one direction till d <= record
     # distance walked*2 (since each step from the max will reach the same
@@ -31,7 +22,7 @@ proc winning_variations(time: int, record_dist: int): int =
         # cast[float]() is bitwise, use float() instead
         max_dist_hold_ms = int(floor(float(time) / 2.0))
     var
-        # two max hold times if odd, e.g. [4, 6] from example above
+        # two max hold times if odd, e.g. [5, 6] when time=11ms
         winning_variations = if time mod 2 != 0: 2 else: 1
         # steps/ms from the hold time that reaches the maximum
         dt_ms_from_max = 1
