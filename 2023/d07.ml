@@ -88,12 +88,7 @@ let compare_hand (a: char list * hand) (b: char list * hand) compare_card: int =
     let a, a_type = a in
     let b, b_type = b in
     if a_type = b_type then
-        let cmp = if is_hand_stronger compare_card a b then 1 else -1 in
-        Printf.printf "A: %s vs B: %s\n" (a |> List.to_seq |> String.of_seq) (b |> List.to_seq |> String.of_seq);
-        match cmp with
-        | 1 -> print_endline "(A) stronger"; cmp
-        | -1 -> print_endline "(B) stronger"; cmp
-        | _ -> print_endline "oops"; cmp
+        if is_hand_stronger compare_card a b then 1 else -1
     else
         Stdlib.compare (int_of_hand a_type) (int_of_hand b_type)
 
@@ -122,8 +117,6 @@ let hand_type cards =
     (* descending order *)
     let matching_cards = aux sorted_cards []
         |> List.sort (fun i1 i2 -> (Stdlib.compare i1 i2) * -1) in
-    List.iter (fun n -> Printf.printf "%d, " n) matching_cards;
-    print_endline "";
     match matching_cards with
     | 5::_ -> FIVE_OF_A_KIND
     | 4::_ -> FOUR_OF_A_KIND
@@ -132,9 +125,7 @@ let hand_type cards =
     | 2::2::_ -> TWO_PAIR
     | 2::_ -> ONE_PAIR
     | 1::_ -> HIGH_CARD
-    | f ->
-        List.iter (fun n -> Printf.printf "%d" n) f;
-        failwith (Printf.sprintf "No matching card type %d" (List.hd f))
+    | f -> failwith (Printf.sprintf "No matching card type %d" (List.hd f))
 
 (* determine strongest possible hand type using present jokers *)
 let hand_type_jokers cards =
@@ -161,9 +152,6 @@ let hand_type_jokers cards =
         |> List.filter (fun (c, n) -> if c = 'J' then false else true)
         |> List.map (fun (c, n) -> n)
         |> List.sort (fun i1 i2 -> (Stdlib.compare i1 i2) * -1) in
-    List.iter (fun n -> Printf.printf "%d, " n) matching_cards_desc;
-    print_endline "";
-    Printf.printf "Jokers: %d\n" num_jokers;
     match matching_cards_desc, num_jokers with
     | 5::_, _ -> FIVE_OF_A_KIND
     (* only jokers *)
@@ -196,10 +184,8 @@ let () =
         |> List.filter (fun l -> (String.length l) > 0)
         |> List.map (fun l ->
             let hand_bid = String.split_on_char ' ' l in
-            Printf.printf "Hand '%s'\n" (List.hd hand_bid);
             let hand = hand_bid |> List.hd |> String.to_seq |> List.of_seq in
             let hand_type = hand_type hand in
-            print_hand hand_type;
             let bid = hand_bid |> List.tl |> List.hd in
             hand, hand_type, int_of_string bid
         ) in
@@ -207,9 +193,6 @@ let () =
     let hands_bids_sorted = hands_bids
         |> List.sort (fun (hand1, hand_type1, _) (hand2, hand_type2, _) ->
             compare_hand (hand1, hand_type1) (hand2, hand_type2) compare_card) in
-    List.iter (fun hand_type_bid ->
-        let hand, _, _ = hand_type_bid in
-        Printf.printf "%s\n" (hand |> List.to_seq |> String.of_seq);) hands_bids_sorted;
     let part1 hands_bids_sorted =
         let rec aux acc hands_bids rank =
             match hands_bids with
@@ -232,7 +215,4 @@ let () =
     let hands_bids_sorted_pt2 = hands_bids_pt2
         |> List.sort (fun (hand1, hand_type1, _) (hand2, hand_type2, _) ->
             compare_hand (hand1, hand_type1) (hand2, hand_type2) compare_card_pt2) in
-    List.iter (fun hand_type_bid ->
-        let hand, _, _ = hand_type_bid in
-        Printf.printf "%s\n" (hand |> List.to_seq |> String.of_seq);) hands_bids_sorted_pt2;
     Printf.printf "Part2: %d\n" (part1 hands_bids_sorted_pt2);
