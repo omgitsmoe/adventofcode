@@ -72,6 +72,8 @@ let print_hand h =
     | HIGH_CARD -> print_endline "HIGH_CARD"
 
 let is_hand_stronger compare_card a b =
+    (* compare the cards sequentially in their orignal sort, it does not matter
+       whether there's a higher card at a different place *)
     let rec aux a b =
         match a, b with
         | c1::rest1, c2::rest2 ->
@@ -88,11 +90,13 @@ let compare_hand (a: char list * hand) (b: char list * hand) compare_card: int =
     let a, a_type = a in
     let b, b_type = b in
     if a_type = b_type then
+        (* compare cards one by one sequentially *)
         if is_hand_stronger compare_card a b then 1 else -1
     else
         Stdlib.compare (int_of_hand a_type) (int_of_hand b_type)
 
 let hand_type cards =
+    (* count card streaks after sorting, e.g. AAA.. Ace streak of 3 *)
     let rec aux cards streaks =
         let extend_streak streaks = match streaks with
         | [] -> 2::[]
@@ -113,6 +117,7 @@ let hand_type cards =
             | _ -> streaks)
         | _ -> raise (Failure "Empty list should not happen!")
     in
+    (* sort so counting number of matching cards/streaks is easy *)
     let sorted_cards = List.sort Stdlib.compare cards in
     (* descending order *)
     let matching_cards = aux sorted_cards []
@@ -146,36 +151,34 @@ let hand_type_jokers cards =
     let matching_cards = aux sorted_cards [] in
     let num_jokers = matching_cards
         |> List.fold_left (fun acc (c, n) -> if c = 'J' then n else acc) 0 in
-    (* descending order *)
-    let matching_cards_desc = matching_cards
-        (* w/o jokers *)
-        |> List.filter (fun (c, n) -> if c = 'J' then false else true)
-        |> List.map (fun (c, n) -> n)
-        |> List.sort (fun i1 i2 -> (Stdlib.compare i1 i2) * -1) in
-    match matching_cards_desc, num_jokers with
-    | 5::_, _ -> FIVE_OF_A_KIND
-    (* only jokers *)
-    | [], 5 -> FIVE_OF_A_KIND
-    | 4::_, 1 -> FIVE_OF_A_KIND
-    | 4::_, 0 -> FOUR_OF_A_KIND
-    | 3::2::_, 0 -> FULL_HOUSE
-    | 3::_, 2 -> FIVE_OF_A_KIND
-    | 3::_, 1 -> FOUR_OF_A_KIND
-    | 3::_, 0 -> THREE_OF_A_KIND
-    | 2::2::_, 1 -> FULL_HOUSE
-    | 2::2::_, 0 -> TWO_PAIR
-    | 2::_, 3 -> FIVE_OF_A_KIND
-    | 2::_, 2 -> FOUR_OF_A_KIND
-    | 2::_, 1 -> THREE_OF_A_KIND
-    | 2::_, 0 -> ONE_PAIR
-    (* FULL_HOUSE also possible but FIVE_OF_A_KIND worth more *)
-    | 1::_, 4 -> FIVE_OF_A_KIND
-    | 1::_, 3 -> FOUR_OF_A_KIND
-    (* always worth more than TWO_PAIR which would also be possible with this
-       constellation *)
-    | 1::_, 2 -> THREE_OF_A_KIND
-    | 1::_, 1 -> ONE_PAIR
-    | _, _ -> HIGH_CARD
+    if num_jokers = 5 then FIVE_OF_A_KIND
+    else
+        (* just spread the highest amount of jokers we can on the card we have
+           the highest amount of till we run out of jokers
+           -> this way we always get the strongest hand *)
+        let rec spread_jokers acc num_jokers cards_desc =
+            match cards_desc with
+            | [] -> List.rev acc
+            | count::rest -> (
+                let dt = min (5 - count) num_jokers in
+                spread_jokers ((dt + count)::acc) (num_jokers - dt) rest
+            ) in
+        let matching_cards_desc = matching_cards
+            (* w/o jokers *)
+            |> List.filter (fun (c, n) -> if c = 'J' then false else true)
+            |> List.map (fun (c, n) -> n)
+            |> List.sort (fun i1 i2 -> (Stdlib.compare i1 i2) * -1)
+            |> spread_jokers [] num_jokers in
+
+        match matching_cards_desc with
+        | 5::_ -> FIVE_OF_A_KIND
+        | 4::_ -> FOUR_OF_A_KIND
+        | 3::2::_ -> FULL_HOUSE
+        | 3::_ -> THREE_OF_A_KIND
+        | 2::2::_ -> TWO_PAIR
+        | 2::_ -> ONE_PAIR
+        | 1::_ -> HIGH_CARD
+        | f -> failwith (Printf.sprintf "No matching card type %d" (List.hd f))
 
 
 let () =
