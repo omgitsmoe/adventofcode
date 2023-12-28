@@ -27,3 +27,4 @@ solutions/
 !*.nim
 !*.roc
 !*.lisp
+!*.ex
