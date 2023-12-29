@@ -28,3 +28,4 @@ solutions/
 !*.roc
 !*.lisp
 !*.ex
+!*.odin
