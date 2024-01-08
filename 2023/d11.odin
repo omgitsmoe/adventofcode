@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:mem"
 
 Galaxy :: struct {
     x, y: int,
@@ -65,6 +66,31 @@ sum_galaxy_dists :: proc(lines: [dynamic]string, empty_offset: int) -> int {
 }
 
 main :: proc() {
+    // setup up tracking allocator to make sure we free all allocations
+    // (doesn't matter since this is a one-off thing and relying on OS
+    //  to free would be fine, just used for understanding how memory
+    //  management works in Odin)
+    track: mem.Tracking_Allocator
+    mem.tracking_allocator_init(&track, context.allocator)
+    context.allocator = mem.tracking_allocator(&track)
+
+    defer {
+        if len(track.allocation_map) > 0 {
+            fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+            for _, entry in track.allocation_map {
+                fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+            }
+        }
+        if len(track.bad_free_array) > 0 {
+            fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+            for entry in track.bad_free_array {
+                fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+            }
+        }
+        mem.tracking_allocator_destroy(&track)
+    }
+    // tracking allocator setup end
+
     data, ok := os.read_entire_file("d11_input.txt", context.allocator)
     if !ok {
         fmt.println("Failed to read file!")
@@ -72,9 +98,12 @@ main :: proc() {
     }
     defer delete(data, context.allocator)
 
-    // no a copy, just a cast
+    // not a copy, just a cast/alias, since data is []u8
     input := string(data)
     lines := make([dynamic]string)
+    defer delete(lines)
+    // NOTE: !!!! strings.*_iterator __consumes__ the input string
+    //       (as in moves the ptr forward and reduces the len)
     for line in strings.split_lines_iterator(&input) {
         if len(line) > 0 {
             append(&lines, line)
