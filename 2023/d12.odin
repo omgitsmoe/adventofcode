@@ -103,8 +103,6 @@ main :: proc() {
         append(&records, record)
     }
 
-    // move packs of '#' according to num damaged around
-
     cache := make(map[string]int)
     defer delete(cache)
     part1_variation_nr_sums := 0
@@ -112,47 +110,22 @@ main :: proc() {
     {
         // ??????#???????????#???? 1,3,1,1,3,1
         // variations 6s vs test_positions 1s
-        // num_variations_expected, exp := variations(rec)
-        // defer delete(exp)
+        // num_variations_expected := variations(rec)
         num_variations := test_positions2(rec, &cache)
         // if num_variations_expected != num_variations {
-        //     fmt.println("MISSMATCH:", string(rec.arrangement), "totvar", num_variations, "expected", num_variations_expected)
+        //     fmt.println("MISSMATCH:",
+        //         string(rec.arrangement),
+        //         "totvar", num_variations,
+        //         "expected", num_variations_expected)
         //     break
         // }
         part1_variation_nr_sums += num_variations
     }
     fmt.println("Part1:", part1_variation_nr_sums)
 
-    rec := Record{
-        // ?#?.?.??.??#?#?#? totvar 0 expected 3
-        // wrong: bclose add "?.??#?#?#?"[1, 3, 4] branch_var 0 upper 0 pos [6]
-
-        // FAIL:
-        // k "?#?#?"[4] pos [4, 7, 9] ?#?.#.?#.###.#?#?
-        // q 13 16
-        // beyond end 14 17   
-        // k "?#?#?"[4] pos [4, 7, 9] ?#?.#.?#.###.#?#?
-        // bclose add "?#?#?"[4] branch_var 0 upper 0 pos [4, 7, 9]
-        // k ".??#?#?#?"[3, 4] pos [4, 7] ?#?.#.?#.??#?#?#?
-        // TODO leftoff
-
-        arrangement = transmute([]u8)string("?#?.?.??.??#?#?#?"),
-        damaged_groups = {1,1,3,4}}
-        // ????.#...#... 4,1,1
-        // arrangement = transmute([]u8)string(".??..??...?##.?.??..??...?##.?.??..??...?##.?.??..??...?##."),
-        // damaged_groups = {1, 1, 3, 1, 1, 3, 1, 1, 3, 1, 1, 3}}
-    // num_variations_expected, exp := variations(rec)
-    // var := test_positions2(rec, &cache, &exp)
-    // fmt.println("totvar", var, "expected", num_variations_expected)
-    // for arr, found in exp {
-    //     if !found {
-    //         fmt.println("NOT found:", string(arr))
-    //     }
-    // }
-    // fmt.println("totvar", var)
-
     // part2:
-    // use memoization
+    // use memoization to make these insane amount of variations possible to
+    // compute
     part2_variation_nr_sums := 0
     for rec_single, i in records
     {
@@ -161,33 +134,10 @@ main :: proc() {
             delete(unfolded.arrangement)
             delete(unfolded.damaged_groups)
         }
-        // num_variations_expected := variations(rec)
         num_variations := test_positions2(unfolded, &cache)
-        // fmt.printf("finished %s %v -> %v\n", unfolded.arrangement, unfolded.damaged_groups, num_variations)
         part2_variation_nr_sums += num_variations
     }
     fmt.println("Part2:", part2_variation_nr_sums)
-}
-
-split_subproblems :: proc(rec: Record) -> []Record {
-    result := make([dynamic]Record)
-    // groups of adjacent ?/#
-    // possible_groups := make([dynamic]int)
-    in_grp := false
-    max_placement := 0
-    grp_idx := 0
-    for c, i in rec.arrangement {
-        switch c {
-        case '#':
-            if max_placement == 0 {
-                // must be part of current grp at grp_idx
-            }
-        case '?':
-            max_placement += 1
-        case '.':
-        }
-    }
-    return result[:]
 }
 
 unfold :: proc(rec: Record) -> Record {
@@ -215,40 +165,6 @@ clone_dyn_array :: proc(dyn: [dynamic]int) -> [dynamic]int {
     dyn_copy := make([dynamic]int, len(dyn), cap(dyn))
     copy(dyn_copy[:], dyn[:])
     return dyn_copy
-}
-
-remainder :: proc(rec: Record, positions: []int) -> (Record, []int) {
-    // remove everything, but the remaining arrangement/groups from record
-    grp_idx_excl := len(positions)
-    pos_end_excl := 0
-    if grp_idx_excl > 0 {
-        grp_start := positions[grp_idx_excl - 1]
-        grp_len := rec.damaged_groups[grp_idx_excl - 1]
-        // one beyond for sep
-        pos_end_excl = grp_start + grp_len
-        // fmt.println("gs", grp_start, "gl", grp_len, "pe", pos_end_excl)
-    }
-
-    return Record{
-        arrangement = rec.arrangement[pos_end_excl:],
-        damaged_groups = rec.damaged_groups[grp_idx_excl:],
-    }, positions[grp_idx_excl:]
-}
-
-key :: proc (rec: Record, positions: []int) -> string {
-    // can't use custom map keys!?!??!
-    // -> have to build a string key
-    rem, _ := remainder(rec, positions)
-    // pos not part of the key, only the left-over symbols and groups matter
-    // key maps left-over symbols/groups to how many possible variations they
-    // represent
-    result := fmt.aprintf("%q%v",
-        // left-over arrangement/groups
-        rem.arrangement,
-        rem.damaged_groups,
-    )
-    // fmt.println("made key", result)
-    return result
 }
 
 fits :: proc(rec: Record, positions: []int) -> bool {
@@ -319,7 +235,6 @@ fits :: proc(rec: Record, positions: []int) -> bool {
         append(&grps, grp_size)
     }
 
-    // fmt.println("fits expected", rec.damaged_groups, "actual", grps)
     if !slice.equal(grps[:], rec.damaged_groups) {
         // groups don't match
         return false
@@ -328,34 +243,21 @@ fits :: proc(rec: Record, positions: []int) -> bool {
     return true
 }
 
-Branch :: struct {
-    // grp positions
-    positions: [dynamic]int,
-    close: bool,
-}
-
-to_str :: proc(rec: Record, pos: []int) -> string {
-    repl := make([]u8, len(rec.arrangement))
-    copy(repl, rec.arrangement)
-    for p, gidx in pos {
-        end_incl := p + rec.damaged_groups[gidx] - 1
-        for idx in p..=(end_incl) {
-            repl[idx] = '#'
-        }
-        if end_incl + 1 < len(repl) {
-            repl[end_incl + 1] = '.'
-        }
-    }
-
-    return string(repl)
-}
-
 Solution :: struct {
     rec: Record,
     close: bool,
 }
 
 test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
+    // NOTE: walk through the pattern reducing it at every step to reduce
+    //       the problem space and make caching easier
+    //       '.' -> "recurse" by skipping that char/island
+    //       '#' -> test if we can fit the island (by checking for '.' and length
+    //              etc.)
+    //       '?' -> test both of the above
+    //       much easier than `test_positions` that instead stores the whole
+    //       arrangement/groups and then stores a separate (grp) positions array
+
     // contains positions of damaged groups
     stack := make([dynamic]Solution)
     defer delete(stack)
@@ -369,7 +271,6 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
     defer delete(branch_variations)
     append(&branch_variations, 0)
 
-    // fmt.println("ARRRR", string(rec.arrangement))
     dfs: for len(stack) > 0 {
         solution := pop(&stack)
 
@@ -380,6 +281,10 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
         if solution.close {
             variations := pop(&branch_variations)
             other_var := variations
+            // this is like a stack in a recursive solution, so add the
+            // result of that branch to the parent
+            // (necessary that we use dfs, so we visit the solutions in the
+            //  correct order)
             branch_variations[len(branch_variations) - 1] += variations
 
 
@@ -409,8 +314,7 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
                 // still groups left -> invalid
                 continue
             } else {
-                // done
-                // fmt.println("d1", key)
+                // done (no arrangement and no groups)
                 branch_variations[len(branch_variations) - 1] += 1
                 continue
             }
@@ -425,15 +329,13 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
                 }
             }
 
-            // valid
-            // fmt.println("d2", key)
+            // valid (no more groups and more '#' signs)
             branch_variations[len(branch_variations) - 1] += 1
             continue
         }
 
         variations, ok := cache[key]
         if ok {
-            // fmt.println("cache", key, variations)
             branch_variations[len(branch_variations) - 1] += variations
             continue
         }
@@ -445,6 +347,8 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
         case '.':
             // skip char
             // + open branch
+            //   -> needed to pop branch_variations and add it to cache
+            //      (emulating recursive calls with a stack)
             append(&branch_variations, 0)
             solution.close = true
             append(&stack, solution)
@@ -461,7 +365,6 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
             next, fits, done := fit_damaged_group(solution)
             if fits {
                 if done {
-                    // fmt.println("d3", key)
                     branch_variations[len(branch_variations) - 1] += 1
                 } else {
                     // open branch
@@ -492,7 +395,6 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
             solution, fits, done := fit_damaged_group(solution)
             if fits {
                 if done {
-                    // fmt.println("d4", key)
                     branch_variations[len(branch_variations) - 1] += 1
                 } else {
                     append(&stack, solution)
@@ -507,7 +409,7 @@ test_positions2 :: proc(rec: Record, cache: ^map[string]int) -> int {
 
 fit_damaged_group :: proc(solution: Solution) -> (Solution, bool, bool) {
     next_group := solution.rec.damaged_groups[0]
-    // fmt.println("rec", string(solution.rec.arrangement))
+    // we try to fit the entire next group
     // can't fit the group
     if next_group > len(solution.rec.arrangement) {
         return solution, false, true
@@ -540,7 +442,6 @@ fit_damaged_group :: proc(solution: Solution) -> (Solution, bool, bool) {
     solution := solution
     solution.rec.arrangement = solution.rec.arrangement[next_group+1:]
     solution.rec.damaged_groups = solution.rec.damaged_groups[1:]
-    // fmt.println("grpdone", string(solution.rec.arrangement))
     return solution, true, false
 }
 
@@ -549,60 +450,49 @@ fit_damaged_group :: proc(solution: Solution) -> (Solution, bool, bool) {
 //       since you can just use the input args as keys
 //       (we can't do that here with arrangement/grps/positions, since
 //        we just count them up)
-test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
+// NOTE: reverted to working, since solutions could be visited in
+//       the wrong order (see prev commit for that version)
+//       this version does no caching at all, but works
+test_positions :: proc(rec: Record) -> int {
+    // NOTE: "move" packs of '#' according to num damaged around
+
     // contains positions of damaged groups
-    stack := make([dynamic]Branch)
+    stack := make([dynamic][dynamic]int)
     defer delete(stack)
-    initial := Branch{
-        positions = make([dynamic]int),
-        close = false,
-    }
+    initial := make([dynamic]int)
     append(&stack, initial)
 
-    // keep track of variations per branch
-    // NOTE: [2,5] also counts the varations for [2,6] (since 2,6 preceeds
-    //      2,5)
-    //      -> need to also track the var per branch
-    //         (using existing would've been a bit easier mb, but requires
-    //          search the stack)
-    branch_var := make([dynamic]int)
-    defer delete(branch_var)
-    append(&branch_var, 0)
-
-    // fmt.println("ARRRR", string(rec.arrangement))
     variations := 0
     for len(stack) > 0 {
-        branch := pop(&stack)
-        // ^ we still need this since we re-queue at the bottom
-        current_group_idx := len(branch.positions)
-        repl := to_str(rec, branch.positions[:])
-        defer delete(repl)
-        // fmt.println("intermed", string(repl))
+        positions := pop(&stack)
+        defer delete(positions)
+        current_group_idx := len(positions)
+
+        // part2: need to keep an additional stack or add it to the
+        // one we already have, or we could abuse DFS to count variations
+        // per branch
+        // -> we queue ourselves another time after we queued further branches
+        //    when we get our "close" we can calculate the dt in variations
+        //    and add it to the cache
 
         if current_group_idx >= len(rec.damaged_groups) {
             // NOTE: don't need to check if it fits, since the code below only
             //       queus valid positions
+            // -> not rly true, missed some cases
             // BUT need to check if the damaged_groups rule is not violated
             // since there might be pre-existing '#' that have to be used,
             // e.g. the below is not valid since the existing # is not used
             //      so there is one two many groups
             // arr ??#?.?#????.? 1, 4
             // var #     ####
-            // NOTE: have to check fit against remainder otherwise branch values
-            //       will be wrong
-            rem, rempos := remainder(rec, branch.positions[:])
-            if fits(rem, rempos) {
-                branch_var[len(branch_var) - 1] += 1
+            if fits(rec, positions[:]) {
                 variations += 1
-                repl := to_str(rec, branch.positions[:])
-                defer delete(repl)
-                // fmt.println("actual", repl)
-                // exp[repl] = true
-
+                // TODO function that adds (for every position in the positions
+                //      stack) the nr of variations into the cache
                 // fmt.println("arr", string(rec.arrangement))
                 // fmt.print("var ")
                 // abs_idx := 0
-                // for p, gidx in branch.positions {
+                // for p, gidx in positions {
                 //     for _ in abs_idx..=(p - 1) {
                 //         fmt.print(" ")
                 //     }
@@ -613,58 +503,16 @@ test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
                 //     }
                 // }
                 // fmt.println("")
-                // fmt.println(branch.positions)
+                // fmt.println(positions)
             }
-            // fmt.println("NOT fit")
-
             // branch finished
-            delete(branch.positions)
             continue
         }
-
-        // part2: need to keep an additional stack or add it to the
-        // one we already have, or we could abuse DFS to count variations
-        // per branch
-        // -> we queue ourselves another time after we queued further branches
-        //    when we get our "close" we can calculate the dt in variations
-        //    and add it to the cache
-
-        // look up the state arrangement/groups/positions in the cache
-        key := key(rec, branch.positions[:])
-        defer delete(key)
-        // fmt.println("k", key, "pos", branch.positions, repl)
-        // fmt.println("stack", stack)
-
-        if branch.close {
-            // add to cache
-            branch_variations := pop(&branch_var)
-            cache[key] = branch_variations
-            cache[key] = branch_variations
-            // fmt.println("bclose add", key, "branch_var", branch_variations, "upper", branch_var[len(branch_var) -1], "pos", branch.positions)
-            // add variations to branch above it (we already popped it off the stack)
-            branch_var[len(branch_var) - 1] += branch_variations
-            delete(branch.positions)
-            continue
-        }
-
-        branch_variations, ok := cache[key]
-        if ok {
-            // fmt.println("cache hit", key, "->", branch_variations)
-            branch_var[len(branch_var) - 1] += branch_variations
-            delete(branch.positions)
-            continue
-        }
-
-        append(&branch_var, 0)
-        // append branch close
-        // done here, since stack is reversed (since we use a dynamic array)
-        branch.close = true
-        append(&stack, branch)
 
         last_end_excl := 0
         if current_group_idx > 0 {
             // occupied till last position + len
-            last_start := branch.positions[current_group_idx - 1]
+            last_start := positions[current_group_idx - 1]
             // shadowing allowed :/
             // last_end_excl := ...
             // add 1 to account for sep
@@ -681,17 +529,15 @@ test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
             for grp_size in rec.damaged_groups[current_group_idx + 1:] {
                 // don't -1, to account for sep that each grp needs
                 // TODO: check
-                occupied_till_idx_end_incl -= grp_size -1 // TODO
+                occupied_till_idx_end_incl -= grp_size
             }
         }
         // not enough space left
         if occupied_till_idx_end_incl < 0 {
-            // fmt.println("not enough space from end")
             continue
         } else if last_end_excl >= occupied_till_idx_end_incl {
             // even if last_end_excl == occupied_till_idx_end_incl
             // would only mean 1 space left
-            // fmt.println("not enough space b4 following")
             continue
         }
 
@@ -704,7 +550,6 @@ test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
 
             // beyond end
             if current_end_incl >= len(rec.arrangement) {
-                // fmt.println("beyond end", current_start, current_end_incl)
                 break
             }
 
@@ -713,14 +558,12 @@ test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
             // NOTE: can't get into trouble with prev end, since those always have
             if (current_start != 0) && (rec.arrangement[current_start - 1] == '#') {
                 // not separated from the prev
-                // fmt.println("prev not sep", current_start, current_end_incl)
                 continue
             }
 
             for c in rec.arrangement[current_start:current_end_incl + 1] {
                 if c == '.' {
                     // can't fit group
-                    // fmt.println("'.' in way", current_start, current_end_incl)
                     continue start
                 }
             }
@@ -729,27 +572,16 @@ test_positions :: proc(rec: Record, cache: ^map[string]int) -> int {
             // either ending at max idx or has a ./? after it
             if current_end_incl != (len(rec.arrangement) - 1) &&
                     (rec.arrangement[current_end_incl + 1] == '#') {
-                // fmt.println("after not sep", current_start, current_end_incl)
                 continue
             }
 
-            to_queque := Branch{
-                positions = clone_dyn_array(branch.positions),
-                close = false,
-            }
-            // fmt.println("q", current_start, current_end_incl)
-            append(&to_queque.positions, current_start)
-            // fmt.println("q", current_start, current_end_incl, to_queque.positions)
+            to_queque := clone_dyn_array(positions)
+            append(&to_queque, current_start)
             append(&stack, to_queque)
-            // fmt.println("qd", to_queque.positions, stack)
         }
-        // fmt.println("qdaf", stack)
     }
 
-    // fmt.println("ALTvar", variations)
-
-    assert(len(branch_var) == 1)
-    return pop(&branch_var)
+    return variations
 }
 
 copy_record :: proc(record: Record) -> (result: Record) {
@@ -818,19 +650,19 @@ satisfies_rule :: proc(arrangement: []u8, damaged_groups: []int) -> (satisfies :
     return satisfies
 }
 
-variations :: proc(starting_record: Record) -> (int, map[string]bool) {
+variations :: proc(starting_record: Record) -> int {
+    // NOTE: brute force solution that queues all possible variations and
+    //       check if the rule is validated when all groups are filled
+
     stack := make([dynamic]Record)
     defer delete(stack)
     // append a copy so we don't free the caller's record.arrangement
     append(&stack, copy_record(starting_record))
 
-    m := make(map[string]bool)
-
     solutions := 0
     for len(stack) > 0 {
         record := pop(&stack)
         defer delete(record.arrangement)
-        // fmt.printf("%s\n", record.arrangement)
 
         found_unknown := false
         for c, i in record.arrangement {
@@ -851,11 +683,9 @@ variations :: proc(starting_record: Record) -> (int, map[string]bool) {
         if !found_unknown {
             if satisfies_rule(record.arrangement, record.damaged_groups) {
                 solutions += 1
-                m[string(record.arrangement)] = true
-                // fmt.printf("expected sol %s\n", record.arrangement)
             }
         }
     }
 
-    return solutions, m
+    return solutions
 }
