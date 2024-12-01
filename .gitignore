@@ -29,3 +29,4 @@ solutions/
 !*.lisp
 !*.ex
 !*.odin
+!*.swift
