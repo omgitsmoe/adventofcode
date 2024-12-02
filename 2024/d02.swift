@@ -48,23 +48,67 @@ func isSafe(line: [Int], skip: Int) -> Bool {
     return safe
 }
 
+func isSafe2(line: [Int]) -> Int {
+    var order = Order.unknown
+    var errCount = 0
+    for i in 0..<line.count - 1 {
+        let cur = line[i]
+        let next = line[i + 1]
+        let diff = next - cur
+        let currentOrder = if diff > 0 {
+            Order.increasing
+        } else {
+            Order.decreasing
+        }
+
+        // so we don't count order/diff double
+        var indexHasError = false
+        if order == .unknown {
+            order = currentOrder
+        } else if order != currentOrder {
+            indexHasError = true
+            // print("\tOrder error i\(i)")
+            // first order was not the order of the entire sequence
+            // so we have to reset here
+            if i == 1 {
+                order = .unknown
+            }
+        }
+
+        let absDiff = abs(diff)
+        if absDiff <= 0 || absDiff > 3 {
+            indexHasError = true
+            // print("\tDiff error i\(i)")
+            // first item was wrong so we should ignore the order
+            if i == 0 {
+                order = .unknown
+            }
+        }
+        if indexHasError {
+            errCount += 1
+        }
+    }
+
+    return errCount
+}
+
 var numSafe = 0
 var numSafePt2 = 0
 for reportLine in reports {
-    if isSafe(line: reportLine, skip: reportLine.count + 1) {
+    if isSafe2(line: reportLine) == 0 {
         numSafe += 1
         numSafePt2 += 1
-        // print("Safe line: \(reportLine)")
+        print("Safe line: \(reportLine)")
         // line already is safe
         continue
     }
 
-    for skipIndex in 0..<reportLine.count {
-        if isSafe(line: reportLine, skip: skipIndex) {
-            numSafePt2 += 1
-            // print("Safe line pt2: \(reportLine)")
-            break
-        }
+    let errCount = isSafe2(line: reportLine)
+    if  errCount < 2 {
+        numSafePt2 += 1
+        print("Safe line pt2: \(reportLine)")
+    } else {
+        print("Unsafe: ec \(errCount) -> \(reportLine)")
     }
 }
 
