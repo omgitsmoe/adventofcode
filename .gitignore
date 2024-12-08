@@ -30,3 +30,4 @@ solutions/
 !*.ex
 !*.odin
 !*.swift
+!*.lua
