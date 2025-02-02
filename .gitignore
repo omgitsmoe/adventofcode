@@ -32,3 +32,4 @@ solutions/
 !*.odin
 !*.swift
 !*.lua
+!*.html
