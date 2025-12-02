@@ -33,3 +33,5 @@ solutions/
 !*.swift
 !*.lua
 !*.html
+!*.example
+!*.mojo
