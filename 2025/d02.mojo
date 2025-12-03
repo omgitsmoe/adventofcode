@@ -26,24 +26,37 @@ fn is_invalid(num: Int) -> Bool:
 
 
 fn is_invalid_part2(num: Int) -> Bool:
-    as_str = String(num)
+    s = String(num)
 
-    for window_size in range(1, len(as_str) // 2 + 1):
-        window_count, remainder = divmod(len(as_str), window_size)
-        if remainder != 0:
-            continue
-
-        first_window = as_str[:window_size]
-        for i in range(window_count - 1):
-            window_index = i + 1
-            current_window = as_str[window_size*window_index:window_size*(window_index + 1)]
-            if first_window != current_window:
-                break
-        else:
-            # for executed without break
-            return True
-
-    return False
+    # NOTE: A string is made of repeated substrings if it appears
+    #       inside a rotated version of itself.
+    #       So a string s is composed of repeated substrings if and only if:
+    #       `s is found in (s + s)[1 : -1]`
+    #       `s + s` contains all rotated versions of itself:
+    #       s = "abcd"
+    #       s + s = "abcdabcd"
+    #       abcd   # original
+    #       bcda   # rotated left 1
+    #       cdab   # rotated left 2
+    #       dabc   # rotated left 3
+    #       abcd   # original again
+    #
+    #       Repitiions matter, since they keep the boundaries aligned
+    #       original: abcabc
+    #       rotate 3: abcabc   # looks identical!
+    #
+    #       If we take s + s and remove the first and last character, we
+    #       eliminate the trivial occurrences of s.
+    #       But if s is made of smaller repeating blocks, the internal
+    #       rotations recreate s somewhere inside.
+    #       s + s = "abcabcabcabc"
+    #       (s + s)[1:-1] = "bcabcabcabc"
+    #       s in ^ == True
+    #
+    #       s + s = "abcdabcd"
+    #       (s + s)[1:-1] = "bcdabcd"
+    #       s in ^ == False
+    return s in (s + s)[1:-1]
 
 
 def main():
