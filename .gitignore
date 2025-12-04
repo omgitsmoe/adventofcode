@@ -35,3 +35,4 @@ solutions/
 !*.html
 !*.example
 !*.mojo
+!README.md
