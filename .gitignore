@@ -33,6 +33,6 @@ solutions/
 !*.swift
 !*.lua
 !*.html
-!*.example
+!*.example*
 !*.mojo
 !README.md
