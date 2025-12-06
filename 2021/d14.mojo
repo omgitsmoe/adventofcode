@@ -3,14 +3,14 @@ import time
 # NOTE: converted from Python using ChatGPT
 #       then fixed all errors/outdated syntax
 # all versions exactly follow the algorithm used by d14.py to be comparable
-# with I/O:
+# with I/O + parsing etc.:
 #   python: ~14ms
 #   cpp: ~1.7ms (g++ -std=c++17 -O3 -march=native -o d14_cpp d14.cpp)
-#   mojo: ~16ms (mojo build then `time ./d14`)
+#   mojo: ~16ms (mojo build d14.mojo --march=native --optimization-level=3)
 # without I/O:
 #   python: ~0.75ms
 #   cpp: ~0.143ms (g++ -std=c++17 -O3 -march=native -o d14_cpp d14.cpp)
-#   mojo: ~0.43ms (mojo build)
+#   mojo: ~0.43ms (mojo build d14.mojo --march=native --optimization-level=3)
 
 alias StrIntDict = Dict[String, Int]
 alias RulesMap = Dict[String, Tuple[String, String]]

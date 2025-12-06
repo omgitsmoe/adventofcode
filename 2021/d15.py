@@ -9,7 +9,7 @@ with open("d15.in", "r") as f:
 class Node:
     level: int
     risk_sum: int
-    prev: int
+    prev: Tuple[int, int]
     def __init__(self, level, risk_sum) -> None:
         self.level = level
         self.risk_sum = risk_sum
@@ -91,7 +91,7 @@ def find_path(grid: List[List[Node]], start: Pos, end_pos: Pos) -> int:
                 # should already have optimal cost
                 continue
 
-            ny, nx = npos
+            nx, ny = npos
             neighbour_node = grid[ny][nx]
             new_cost = path_cost + neighbour_node.level
             if new_cost < neighbour_node.risk_sum:
@@ -108,9 +108,13 @@ print(find_path(grid, (0, 0), (len(grid[0]) - 1, len(grid) - 1)))
 
 import time
 start = time.time()
-five_x_grid = [[
-    Node((int(c) - 1 + xx + yy) % 9 + 1, sys.maxsize) for xx in range(5) for c in line]
-    for yy in range(5) for line in contents]
+five_x_grid = [
+    [
+        Node((int(c) - 1 + xx + yy) % 9 + 1, sys.maxsize)
+        for xx in range(5) for c in line
+    ]
+    for yy in range(5) for line in contents
+]
 print("Part2:", find_path(five_x_grid, (0, 0), (len(five_x_grid[0]) - 1, len(five_x_grid) - 1)))
 end = time.time()
 took_secs = end - start
