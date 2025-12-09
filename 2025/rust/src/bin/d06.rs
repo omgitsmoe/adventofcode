@@ -4,6 +4,13 @@ use std::fs;
 // -> not really idiomatic, turned out to be more cumbersome than I thought
 //    matching on vecs instead lists, if you want to avoid copies you run into ownership
 //    problems quickly and even then it seems very hard or even impossible to avoid copies
+//
+//
+// NOTE: added comparison implementations: optimized functional and imperative
+// imperative is insanely faster ~1ms vs ~40ms optimized functional...
+// -> Rust just isn't suited to do "pure" functional programming in esp. with
+//    immutable values, since it leads to way too many copies
+
 
 // cargo run --bin d06
 fn main() {
